@@ -1,16 +1,16 @@
-import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { AppRouter } from "@/router";
 import { theme } from "@/theme";
+import { Layout } from "@/components";
+import { EditorPage } from "@/pages";
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter>
-        <AppRouter />
-      </BrowserRouter>
+      <Layout>
+        <EditorPage />
+      </Layout>
     </ThemeProvider>
   );
 }
