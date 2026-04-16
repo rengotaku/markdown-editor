@@ -3,18 +3,8 @@ import { describe, it, expect } from "vitest";
 import App from "./App";
 
 describe("App", () => {
-  it("renders home page by default", () => {
+  it("renders the Markdown Editor title", () => {
     render(<App />);
-    expect(screen.getByText("React SPA Boilerplate")).toBeInTheDocument();
-  });
-
-  it("shows navigation links", () => {
-    render(<App />);
-    expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
-  });
-
-  it("renders with correct app title", () => {
-    render(<App />);
-    expect(screen.getByText("React SPA Cloudflare")).toBeInTheDocument();
+    expect(screen.getByText("Markdown Editor")).toBeInTheDocument();
   });
 });
