@@ -115,6 +115,6 @@ export const useEditorStore = create<EditorState>()(
       markdown: DEFAULT_MARKDOWN,
       updateMarkdown: (value) => set({ markdown: value }),
     }),
-    { name: "markdown-editor-storage" },
-  ),
+    { name: "markdown-editor-storage" }
+  )
 );

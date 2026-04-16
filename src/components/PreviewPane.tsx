@@ -38,8 +38,22 @@ export function PreviewPane() {
         height: "100%",
         overflow: "auto",
         p: 2,
-        "& h1": { fontSize: "2em", fontWeight: 700, mb: 1, mt: 0, borderBottom: "1px solid #eee", pb: 0.5 },
-        "& h2": { fontSize: "1.5em", fontWeight: 600, mb: 1, mt: 2, borderBottom: "1px solid #eee", pb: 0.5 },
+        "& h1": {
+          fontSize: "2em",
+          fontWeight: 700,
+          mb: 1,
+          mt: 0,
+          borderBottom: "1px solid #eee",
+          pb: 0.5,
+        },
+        "& h2": {
+          fontSize: "1.5em",
+          fontWeight: 600,
+          mb: 1,
+          mt: 2,
+          borderBottom: "1px solid #eee",
+          pb: 0.5,
+        },
         "& h3": { fontSize: "1.25em", fontWeight: 600, mb: 1, mt: 1.5 },
         "& p": { mb: 1 },
         "& code": {
@@ -85,11 +99,7 @@ export function PreviewPane() {
               return <MermaidBlock code={codeStr} />;
             }
 
-            return (
-              <code className={className}>
-                {children}
-              </code>
-            );
+            return <code className={className}>{children}</code>;
           },
         }}
       >

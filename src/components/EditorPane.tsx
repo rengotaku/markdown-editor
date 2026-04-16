@@ -10,7 +10,9 @@ export function EditorPane() {
       <Box
         component="textarea"
         value={markdown}
-        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateMarkdown(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+          updateMarkdown(e.target.value)
+        }
         spellCheck={false}
         sx={{
           flex: 1,
