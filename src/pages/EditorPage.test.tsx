@@ -1,15 +1,14 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
-import { useEditorStore } from "@/hooks/useEditorStore";
+import { render } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 import { EditorPage } from "./EditorPage";
 
+vi.mock("@/components/tiptap/TiptapEditor", () => ({
+  TiptapEditor: () => <div data-testid="tiptap-editor" />,
+}));
+
 describe("EditorPage", () => {
-  it("renders editor textarea and preview", () => {
-    useEditorStore.getState().updateMarkdown("# Editor Test");
-    render(<EditorPage />);
-    expect(screen.getByRole("textbox")).toHaveValue("# Editor Test");
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Editor Test" })
-    ).toBeInTheDocument();
+  it("renders the TiptapEditor", () => {
+    const { getByTestId } = render(<EditorPage />);
+    expect(getByTestId("tiptap-editor")).toBeInTheDocument();
   });
 });
