@@ -86,14 +86,33 @@ function useTableHover(editor: Editor) {
     null
   );
   const tableRef = useRef<HTMLTableElement | null>(null);
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelLeaveTimer = useCallback(() => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+  }, []);
+
+  const clearHover = useCallback(() => {
+    setHoveredRow(null);
+    setHoveredColumn(null);
+  }, []);
+
+  const scheduleClearHover = useCallback(() => {
+    cancelLeaveTimer();
+    leaveTimerRef.current = setTimeout(clearHover, 150);
+  }, [cancelLeaveTimer, clearHover]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      cancelLeaveTimer();
+
       const dom = getEditorDom(editor);
       const tableEl = dom?.querySelector("table");
       if (!tableEl) {
-        setHoveredRow(null);
-        setHoveredColumn(null);
+        clearHover();
         tableRef.current = null;
         return;
       }
@@ -102,8 +121,7 @@ function useTableHover(editor: Editor) {
       const target = e.target as HTMLElement;
       const cell = target.closest("td, th");
       if (!cell || !tableEl.contains(cell)) {
-        setHoveredRow(null);
-        setHoveredColumn(null);
+        scheduleClearHover();
         return;
       }
 
@@ -128,17 +146,8 @@ function useTableHover(editor: Editor) {
       });
     };
 
-    const handleMouseLeave = (e: MouseEvent) => {
-      const relatedTarget = e.relatedTarget as HTMLElement | null;
-      if (
-        relatedTarget?.closest(
-          '[data-table-grip="row"], [data-table-grip="column"]'
-        )
-      ) {
-        return;
-      }
-      setHoveredRow(null);
-      setHoveredColumn(null);
+    const handleMouseLeave = () => {
+      scheduleClearHover();
     };
 
     let currentDom: HTMLElement | null = null;
@@ -160,14 +169,22 @@ function useTableHover(editor: Editor) {
 
     return () => {
       editor.off("create", attach);
+      cancelLeaveTimer();
       if (currentDom) {
         currentDom.removeEventListener("mousemove", handleMouseMove);
         currentDom.removeEventListener("mouseleave", handleMouseLeave);
       }
     };
-  }, [editor]);
+  }, [editor, cancelLeaveTimer, clearHover, scheduleClearHover]);
 
-  return { hoveredRow, hoveredColumn, setHoveredRow, setHoveredColumn };
+  return {
+    hoveredRow,
+    hoveredColumn,
+    setHoveredRow,
+    setHoveredColumn,
+    cancelLeaveTimer,
+    scheduleClearHover,
+  };
 }
 
 function focusCellAt(editor: Editor, rowIndex: number, colIndex: number) {
@@ -191,8 +208,14 @@ function focusCellAt(editor: Editor, rowIndex: number, colIndex: number) {
 
 export function TableMenu({ editor }: TableMenuProps) {
   const position = useTablePosition(editor);
-  const { hoveredRow, hoveredColumn, setHoveredRow, setHoveredColumn } =
-    useTableHover(editor);
+  const {
+    hoveredRow,
+    hoveredColumn,
+    setHoveredRow,
+    setHoveredColumn,
+    cancelLeaveTimer,
+    scheduleClearHover,
+  } = useTableHover(editor);
 
   const [rowMenuAnchor, setRowMenuAnchor] = useState<HTMLElement | null>(null);
   const [colMenuAnchor, setColMenuAnchor] = useState<HTMLElement | null>(null);
@@ -279,12 +302,8 @@ export function TableMenu({ editor }: TableMenuProps) {
         data-table-grip="row"
         size="small"
         onClick={(e) => handleRowGripClick(e, hoveredRow.index)}
-        onMouseLeave={(e) => {
-          const related = e.relatedTarget as HTMLElement | null;
-          if (!related?.closest("td, th, [data-table-grip]")) {
-            setHoveredRow(null);
-          }
-        }}
+        onMouseEnter={cancelLeaveTimer}
+        onMouseLeave={scheduleClearHover}
         aria-label="Row options"
         sx={{
           position: "absolute",
@@ -303,12 +322,8 @@ export function TableMenu({ editor }: TableMenuProps) {
         data-table-grip="column"
         size="small"
         onClick={(e) => handleColGripClick(e, hoveredColumn.index)}
-        onMouseLeave={(e) => {
-          const related = e.relatedTarget as HTMLElement | null;
-          if (!related?.closest("td, th, [data-table-grip]")) {
-            setHoveredColumn(null);
-          }
-        }}
+        onMouseEnter={cancelLeaveTimer}
+        onMouseLeave={scheduleClearHover}
         aria-label="Column options"
         sx={{
           position: "absolute",
