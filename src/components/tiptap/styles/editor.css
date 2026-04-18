@@ -89,3 +89,34 @@
 .ProseMirror img {
   max-width: 100%;
 }
+
+.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 16px 0;
+  table-layout: fixed;
+  overflow: hidden;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  position: relative;
+  min-width: 80px;
+  vertical-align: top;
+}
+
+.ProseMirror th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+.ProseMirror .selectedCell {
+  background-color: #e3f2fd;
+}
+
+.ProseMirror th p,
+.ProseMirror td p {
+  margin-bottom: 0;
+}
