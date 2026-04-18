@@ -232,8 +232,14 @@ export function TableMenu({ editor }: TableMenuProps) {
     onGripLeave,
   } = useTableHover(editor);
 
-  const [rowMenuAnchor, setRowMenuAnchor] = useState<HTMLElement | null>(null);
-  const [colMenuAnchor, setColMenuAnchor] = useState<HTMLElement | null>(null);
+  const [rowMenuPos, setRowMenuPos] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+  const [colMenuPos, setColMenuPos] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const [activeRowIndex, setActiveRowIndex] = useState<number>(-1);
   const [activeColIndex, setActiveColIndex] = useState<number>(-1);
 
@@ -241,7 +247,8 @@ export function TableMenu({ editor }: TableMenuProps) {
     e: React.MouseEvent<HTMLElement>,
     rowIndex: number
   ) => {
-    setRowMenuAnchor(e.currentTarget);
+    const rect = e.currentTarget.getBoundingClientRect();
+    setRowMenuPos({ top: rect.bottom, left: rect.left });
     setActiveRowIndex(rowIndex);
   };
 
@@ -249,17 +256,18 @@ export function TableMenu({ editor }: TableMenuProps) {
     e: React.MouseEvent<HTMLElement>,
     colIndex: number
   ) => {
-    setColMenuAnchor(e.currentTarget);
+    const rect = e.currentTarget.getBoundingClientRect();
+    setColMenuPos({ top: rect.bottom, left: rect.left });
     setActiveColIndex(colIndex);
   };
 
   const closeRowMenu = () => {
-    setRowMenuAnchor(null);
+    setRowMenuPos(null);
     setActiveRowIndex(-1);
   };
 
   const closeColMenu = () => {
-    setColMenuAnchor(null);
+    setColMenuPos(null);
     setActiveColIndex(-1);
   };
 
@@ -303,16 +311,17 @@ export function TableMenu({ editor }: TableMenuProps) {
 
   const gripButtonStyles = {
     minWidth: 0,
-    padding: "2px",
-    borderRadius: "4px",
-    bgcolor: "transparent",
-    color: "#999",
-    "&:hover": { bgcolor: "#e8e8e8", color: "#555" },
+    padding: "1px 2px",
+    borderRadius: "3px",
+    bgcolor: "rgba(55, 53, 47, 0.06)",
+    color: "rgba(55, 53, 47, 0.35)",
+    "&:hover": { bgcolor: "rgba(55, 53, 47, 0.1)", color: "rgba(55, 53, 47, 0.6)" },
     zIndex: 1200,
+    cursor: "pointer",
   } as const;
 
   const rowGrip =
-    hoveredRow && !rowMenuAnchor ? (
+    hoveredRow && !rowMenuPos ? (
       <IconButton
         data-table-grip="row"
         size="small"
@@ -322,17 +331,20 @@ export function TableMenu({ editor }: TableMenuProps) {
         aria-label="Row options"
         sx={{
           position: "absolute",
-          top: hoveredRow.top + hoveredRow.height / 2 - 12,
-          left: position.left - 28,
+          top: hoveredRow.top,
+          left: position.left - 22,
+          width: 20,
+          height: hoveredRow.height,
+          borderRadius: "3px 0 0 3px",
           ...gripButtonStyles,
         }}
       >
-        <DragIndicatorIcon sx={{ fontSize: 18 }} />
+        <DragIndicatorIcon sx={{ fontSize: 14 }} />
       </IconButton>
     ) : null;
 
   const colGrip =
-    hoveredColumn && !colMenuAnchor ? (
+    hoveredColumn && !colMenuPos ? (
       <IconButton
         data-table-grip="column"
         size="small"
@@ -342,13 +354,16 @@ export function TableMenu({ editor }: TableMenuProps) {
         aria-label="Column options"
         sx={{
           position: "absolute",
-          top: position.top - 28,
-          left: hoveredColumn.left + hoveredColumn.width / 2 - 12,
+          top: position.top - 20,
+          left: hoveredColumn.left,
+          width: hoveredColumn.width,
+          height: 18,
+          borderRadius: "3px 3px 0 0",
           ...gripButtonStyles,
         }}
       >
         <DragIndicatorIcon
-          sx={{ fontSize: 18, transform: "rotate(90deg)" }}
+          sx={{ fontSize: 14, transform: "rotate(90deg)" }}
         />
       </IconButton>
     ) : null;
@@ -403,11 +418,10 @@ export function TableMenu({ editor }: TableMenuProps) {
       {addRowButton}
 
       <Menu
-        anchorEl={rowMenuAnchor}
-        open={Boolean(rowMenuAnchor)}
+        open={Boolean(rowMenuPos)}
         onClose={closeRowMenu}
-        anchorOrigin={{ vertical: "center", horizontal: "left" }}
-        transformOrigin={{ vertical: "center", horizontal: "right" }}
+        anchorReference="anchorPosition"
+        anchorPosition={rowMenuPos ?? undefined}
         slotProps={{ paper: { sx: { minWidth: 160 } } }}
       >
         <MenuItem onClick={() => handleRowAction("addAbove")}>
@@ -437,11 +451,10 @@ export function TableMenu({ editor }: TableMenuProps) {
       </Menu>
 
       <Menu
-        anchorEl={colMenuAnchor}
-        open={Boolean(colMenuAnchor)}
+        open={Boolean(colMenuPos)}
         onClose={closeColMenu}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        transformOrigin={{ vertical: "bottom", horizontal: "center" }}
+        anchorReference="anchorPosition"
+        anchorPosition={colMenuPos ?? undefined}
         slotProps={{ paper: { sx: { minWidth: 160 } } }}
       >
         <MenuItem onClick={() => handleColAction("addLeft")}>
