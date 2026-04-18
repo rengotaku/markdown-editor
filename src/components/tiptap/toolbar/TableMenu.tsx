@@ -86,6 +86,7 @@ function useTableHover(editor: Editor) {
     null
   );
   const tableRef = useRef<HTMLTableElement | null>(null);
+  const gripHoveredRef = useRef(false);
   const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cancelLeaveTimer = useCallback(() => {
@@ -96,17 +97,30 @@ function useTableHover(editor: Editor) {
   }, []);
 
   const clearHover = useCallback(() => {
+    if (gripHoveredRef.current) return;
     setHoveredRow(null);
     setHoveredColumn(null);
   }, []);
 
   const scheduleClearHover = useCallback(() => {
+    if (gripHoveredRef.current) return;
     cancelLeaveTimer();
-    leaveTimerRef.current = setTimeout(clearHover, 150);
+    leaveTimerRef.current = setTimeout(clearHover, 300);
   }, [cancelLeaveTimer, clearHover]);
+
+  const onGripEnter = useCallback(() => {
+    gripHoveredRef.current = true;
+    cancelLeaveTimer();
+  }, [cancelLeaveTimer]);
+
+  const onGripLeave = useCallback(() => {
+    gripHoveredRef.current = false;
+    scheduleClearHover();
+  }, [scheduleClearHover]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      if (gripHoveredRef.current) return;
       cancelLeaveTimer();
 
       const dom = getEditorDom(editor);
@@ -147,6 +161,7 @@ function useTableHover(editor: Editor) {
     };
 
     const handleMouseLeave = () => {
+      if (gripHoveredRef.current) return;
       scheduleClearHover();
     };
 
@@ -182,8 +197,8 @@ function useTableHover(editor: Editor) {
     hoveredColumn,
     setHoveredRow,
     setHoveredColumn,
-    cancelLeaveTimer,
-    scheduleClearHover,
+    onGripEnter,
+    onGripLeave,
   };
 }
 
@@ -213,8 +228,8 @@ export function TableMenu({ editor }: TableMenuProps) {
     hoveredColumn,
     setHoveredRow,
     setHoveredColumn,
-    cancelLeaveTimer,
-    scheduleClearHover,
+    onGripEnter,
+    onGripLeave,
   } = useTableHover(editor);
 
   const [rowMenuAnchor, setRowMenuAnchor] = useState<HTMLElement | null>(null);
@@ -302,8 +317,8 @@ export function TableMenu({ editor }: TableMenuProps) {
         data-table-grip="row"
         size="small"
         onClick={(e) => handleRowGripClick(e, hoveredRow.index)}
-        onMouseEnter={cancelLeaveTimer}
-        onMouseLeave={scheduleClearHover}
+        onMouseEnter={onGripEnter}
+        onMouseLeave={onGripLeave}
         aria-label="Row options"
         sx={{
           position: "absolute",
@@ -322,8 +337,8 @@ export function TableMenu({ editor }: TableMenuProps) {
         data-table-grip="column"
         size="small"
         onClick={(e) => handleColGripClick(e, hoveredColumn.index)}
-        onMouseEnter={cancelLeaveTimer}
-        onMouseLeave={scheduleClearHover}
+        onMouseEnter={onGripEnter}
+        onMouseLeave={onGripLeave}
         aria-label="Column options"
         sx={{
           position: "absolute",
