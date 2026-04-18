@@ -62,9 +62,7 @@ const DEFAULT_CONTENT: JSONContent = {
           content: [
             {
               type: "paragraph",
-              content: [
-                { type: "text", text: "Headings, lists, and blockquotes" },
-              ],
+              content: [{ type: "text", text: "Headings, lists, and blockquotes" }],
             },
           ],
         },

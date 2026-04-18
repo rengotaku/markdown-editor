@@ -1,9 +1,4 @@
-import {
-  useState,
-  useCallback,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import type { Editor, Range } from "@tiptap/core";
 import Paper from "@mui/material/Paper";
 import List from "@mui/material/List";
@@ -86,9 +81,8 @@ function SlashCommandListInner(
 // Use key={items.length + items[0]?.title} in parent to reset state when items change.
 // The SlashCommand extension's render cycle re-creates the component on each update,
 // so selectedIndex naturally resets to 0.
-export const SlashCommandList = forwardRef<
-  SlashCommandListRef,
-  SlashCommandListProps
->(SlashCommandListInner);
+export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandListProps>(
+  SlashCommandListInner
+);
 
 SlashCommandList.displayName = "SlashCommandList";

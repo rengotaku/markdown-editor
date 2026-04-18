@@ -17,9 +17,7 @@ describe("useEditorStore", () => {
     const state = useEditorStore.getState();
     const firstBlock = state.content.content?.[0];
     expect(firstBlock?.type).toBe("heading");
-    expect(firstBlock?.content?.[0]?.text).toBe(
-      "Welcome to Markdown Editor"
-    );
+    expect(firstBlock?.content?.[0]?.text).toBe("Welcome to Markdown Editor");
   });
 
   it("updates content immutably via updateContent", () => {

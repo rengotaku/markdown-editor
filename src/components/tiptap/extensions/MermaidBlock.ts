@@ -45,25 +45,14 @@ export const MermaidBlock = Node.create({
           transformPasted(slice) {
             const nodes: PmNode[] = [];
             slice.content.forEach((node) => {
-              if (
-                node.type.name === "codeBlock" &&
-                node.attrs.language === "mermaid"
-              ) {
-                nodes.push(
-                  mermaidBlockType.create(
-                    { code: node.textContent },
-                  )
-                );
+              if (node.type.name === "codeBlock" && node.attrs.language === "mermaid") {
+                nodes.push(mermaidBlockType.create({ code: node.textContent }));
               } else {
                 nodes.push(node);
               }
             });
 
-            return new Slice(
-              Fragment.from(nodes),
-              slice.openStart,
-              slice.openEnd
-            );
+            return new Slice(Fragment.from(nodes), slice.openStart, slice.openEnd);
           },
         },
       }),
