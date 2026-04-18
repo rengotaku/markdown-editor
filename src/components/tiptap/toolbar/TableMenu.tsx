@@ -15,6 +15,14 @@ interface TableMenuProps {
   editor: Editor;
 }
 
+function getEditorDom(editor: Editor): HTMLElement | null {
+  try {
+    return editor.view.dom;
+  } catch {
+    return null;
+  }
+}
+
 interface TablePosition {
   top: number;
   left: number;
@@ -38,12 +46,13 @@ function useTablePosition(editor: Editor): TablePosition | null {
   const [position, setPosition] = useState<TablePosition | null>(null);
 
   const updatePosition = useCallback(() => {
-    if (!editor.isActive("table")) {
+    const dom = getEditorDom(editor);
+    if (!dom || !editor.isActive("table")) {
       setPosition(null);
       return;
     }
 
-    const tableEl = editor.view.dom.querySelector("table");
+    const tableEl = dom.querySelector("table");
     if (!tableEl) {
       setPosition(null);
       return;
@@ -80,7 +89,8 @@ function useTableHover(editor: Editor) {
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      const tableEl = editor.view.dom.querySelector("table");
+      const dom = getEditorDom(editor);
+      const tableEl = dom?.querySelector("table");
       if (!tableEl) {
         setHoveredRow(null);
         setHoveredColumn(null);
@@ -131,13 +141,29 @@ function useTableHover(editor: Editor) {
       setHoveredColumn(null);
     };
 
-    const editorDom = editor.view.dom;
-    editorDom.addEventListener("mousemove", handleMouseMove);
-    editorDom.addEventListener("mouseleave", handleMouseLeave);
+    let currentDom: HTMLElement | null = null;
+
+    const attach = () => {
+      const dom = getEditorDom(editor);
+      if (!dom || dom === currentDom) return;
+      if (currentDom) {
+        currentDom.removeEventListener("mousemove", handleMouseMove);
+        currentDom.removeEventListener("mouseleave", handleMouseLeave);
+      }
+      currentDom = dom;
+      dom.addEventListener("mousemove", handleMouseMove);
+      dom.addEventListener("mouseleave", handleMouseLeave);
+    };
+
+    attach();
+    editor.on("create", attach);
 
     return () => {
-      editorDom.removeEventListener("mousemove", handleMouseMove);
-      editorDom.removeEventListener("mouseleave", handleMouseLeave);
+      editor.off("create", attach);
+      if (currentDom) {
+        currentDom.removeEventListener("mousemove", handleMouseMove);
+        currentDom.removeEventListener("mouseleave", handleMouseLeave);
+      }
     };
   }, [editor]);
 
@@ -145,7 +171,9 @@ function useTableHover(editor: Editor) {
 }
 
 function focusCellAt(editor: Editor, rowIndex: number, colIndex: number) {
-  const tableEl = editor.view.dom.querySelector("table");
+  const dom = getEditorDom(editor);
+  if (!dom) return;
+  const tableEl = dom.querySelector("table");
   if (!tableEl) return;
   const rows = tableEl.querySelectorAll("tr");
   const targetRow = rows[rowIndex];
@@ -153,8 +181,12 @@ function focusCellAt(editor: Editor, rowIndex: number, colIndex: number) {
   const cells = targetRow.querySelectorAll("td, th");
   const targetCell = cells[colIndex];
   if (!targetCell) return;
-  const pos = editor.view.posAtDOM(targetCell, 0);
-  editor.chain().focus().setTextSelection(pos).run();
+  try {
+    const pos = editor.view.posAtDOM(targetCell, 0);
+    editor.chain().focus().setTextSelection(pos).run();
+  } catch {
+    // view not available
+  }
 }
 
 export function TableMenu({ editor }: TableMenuProps) {
