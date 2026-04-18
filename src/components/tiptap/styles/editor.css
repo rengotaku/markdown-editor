@@ -92,8 +92,8 @@
 
 .ProseMirror table {
   border-collapse: collapse;
-  width: calc(100% - 32px);
-  margin: 40px 0 32px;
+  width: calc(100% - 48px);
+  margin: 32px 0 32px 32px;
   table-layout: fixed;
   overflow: hidden;
 }

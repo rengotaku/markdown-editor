@@ -1,13 +1,15 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/react";
-import Paper from "@mui/material/Paper";
 import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
 import Divider from "@mui/material/Divider";
 import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 
 interface TableMenuProps {
   editor: Editor;
@@ -18,6 +20,18 @@ interface TablePosition {
   left: number;
   width: number;
   height: number;
+}
+
+interface HoveredRow {
+  index: number;
+  top: number;
+  height: number;
+}
+
+interface HoveredColumn {
+  index: number;
+  left: number;
+  width: number;
 }
 
 function useTablePosition(editor: Editor): TablePosition | null {
@@ -57,79 +71,225 @@ function useTablePosition(editor: Editor): TablePosition | null {
   return position;
 }
 
+function useTableHover(editor: Editor) {
+  const [hoveredRow, setHoveredRow] = useState<HoveredRow | null>(null);
+  const [hoveredColumn, setHoveredColumn] = useState<HoveredColumn | null>(
+    null
+  );
+  const tableRef = useRef<HTMLTableElement | null>(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const tableEl = editor.view.dom.querySelector("table");
+      if (!tableEl) {
+        setHoveredRow(null);
+        setHoveredColumn(null);
+        tableRef.current = null;
+        return;
+      }
+      tableRef.current = tableEl;
+
+      const target = e.target as HTMLElement;
+      const cell = target.closest("td, th");
+      if (!cell || !tableEl.contains(cell)) {
+        setHoveredRow(null);
+        setHoveredColumn(null);
+        return;
+      }
+
+      const row = cell.closest("tr");
+      if (row) {
+        const rowRect = row.getBoundingClientRect();
+        const rows = Array.from(tableEl.querySelectorAll("tr"));
+        const rowIndex = rows.indexOf(row);
+        setHoveredRow({
+          index: rowIndex,
+          top: rowRect.top + window.scrollY,
+          height: rowRect.height,
+        });
+      }
+
+      const cellEl = cell as HTMLTableCellElement;
+      const cellRect = cellEl.getBoundingClientRect();
+      setHoveredColumn({
+        index: cellEl.cellIndex,
+        left: cellRect.left + window.scrollX,
+        width: cellRect.width,
+      });
+    };
+
+    const handleMouseLeave = (e: MouseEvent) => {
+      const relatedTarget = e.relatedTarget as HTMLElement | null;
+      if (
+        relatedTarget?.closest(
+          '[data-table-grip="row"], [data-table-grip="column"]'
+        )
+      ) {
+        return;
+      }
+      setHoveredRow(null);
+      setHoveredColumn(null);
+    };
+
+    const editorDom = editor.view.dom;
+    editorDom.addEventListener("mousemove", handleMouseMove);
+    editorDom.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      editorDom.removeEventListener("mousemove", handleMouseMove);
+      editorDom.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, [editor]);
+
+  return { hoveredRow, hoveredColumn, setHoveredRow, setHoveredColumn };
+}
+
+function focusCellAt(editor: Editor, rowIndex: number, colIndex: number) {
+  const tableEl = editor.view.dom.querySelector("table");
+  if (!tableEl) return;
+  const rows = tableEl.querySelectorAll("tr");
+  const targetRow = rows[rowIndex];
+  if (!targetRow) return;
+  const cells = targetRow.querySelectorAll("td, th");
+  const targetCell = cells[colIndex];
+  if (!targetCell) return;
+  const pos = editor.view.posAtDOM(targetCell, 0);
+  editor.chain().focus().setTextSelection(pos).run();
+}
+
 export function TableMenu({ editor }: TableMenuProps) {
   const position = useTablePosition(editor);
+  const { hoveredRow, hoveredColumn, setHoveredRow, setHoveredColumn } =
+    useTableHover(editor);
+
+  const [rowMenuAnchor, setRowMenuAnchor] = useState<HTMLElement | null>(null);
+  const [colMenuAnchor, setColMenuAnchor] = useState<HTMLElement | null>(null);
+  const [activeRowIndex, setActiveRowIndex] = useState<number>(-1);
+  const [activeColIndex, setActiveColIndex] = useState<number>(-1);
+
+  const handleRowGripClick = (
+    e: React.MouseEvent<HTMLElement>,
+    rowIndex: number
+  ) => {
+    setRowMenuAnchor(e.currentTarget);
+    setActiveRowIndex(rowIndex);
+  };
+
+  const handleColGripClick = (
+    e: React.MouseEvent<HTMLElement>,
+    colIndex: number
+  ) => {
+    setColMenuAnchor(e.currentTarget);
+    setActiveColIndex(colIndex);
+  };
+
+  const closeRowMenu = () => {
+    setRowMenuAnchor(null);
+    setActiveRowIndex(-1);
+  };
+
+  const closeColMenu = () => {
+    setColMenuAnchor(null);
+    setActiveColIndex(-1);
+  };
+
+  const handleRowAction = (action: "addAbove" | "addBelow" | "delete") => {
+    focusCellAt(editor, activeRowIndex, 0);
+    switch (action) {
+      case "addAbove":
+        editor.chain().focus().addRowBefore().run();
+        break;
+      case "addBelow":
+        editor.chain().focus().addRowAfter().run();
+        break;
+      case "delete":
+        editor.chain().focus().deleteRow().run();
+        break;
+    }
+    closeRowMenu();
+  };
+
+  const handleColAction = (action: "addLeft" | "addRight" | "delete") => {
+    focusCellAt(editor, 0, activeColIndex);
+    switch (action) {
+      case "addLeft":
+        editor.chain().focus().addColumnBefore().run();
+        break;
+      case "addRight":
+        editor.chain().focus().addColumnAfter().run();
+        break;
+      case "delete":
+        editor.chain().focus().deleteColumn().run();
+        break;
+    }
+    closeColMenu();
+  };
 
   if (!position) {
     return null;
   }
 
-  const menuBar = (
-    <Paper
-      elevation={3}
-      sx={{
-        position: "absolute",
-        top: position.top - 36,
-        left: position.left,
-        display: "flex",
-        alignItems: "center",
-        gap: 0.25,
-        px: 0.5,
-        py: 0.25,
-        borderRadius: 1,
-        zIndex: 1200,
-      }}
-    >
-      <Tooltip title="Add column" arrow>
-        <IconButton
-          size="small"
-          onClick={() => editor.chain().focus().addColumnAfter().run()}
-          aria-label="Add column"
-        >
-          <AddIcon fontSize="small" sx={{ transform: "rotate(90deg)" }} />
-        </IconButton>
-      </Tooltip>
-      <Tooltip title="Remove column" arrow>
-        <IconButton
-          size="small"
-          onClick={() => editor.chain().focus().deleteColumn().run()}
-          aria-label="Remove column"
-        >
-          <RemoveIcon fontSize="small" sx={{ transform: "rotate(90deg)" }} />
-        </IconButton>
-      </Tooltip>
-      <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
-      <Tooltip title="Add row" arrow>
-        <IconButton
-          size="small"
-          onClick={() => editor.chain().focus().addRowAfter().run()}
-          aria-label="Add row"
-        >
-          <AddIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-      <Tooltip title="Remove row" arrow>
-        <IconButton
-          size="small"
-          onClick={() => editor.chain().focus().deleteRow().run()}
-          aria-label="Remove row"
-        >
-          <RemoveIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-      <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
-      <Tooltip title="Delete table" arrow>
-        <IconButton
-          size="small"
-          onClick={() => editor.chain().focus().deleteTable().run()}
-          aria-label="Delete table"
-          color="error"
-        >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-    </Paper>
-  );
+  const isHeaderRow = hoveredRow?.index === 0;
+
+  const gripButtonStyles = {
+    minWidth: 0,
+    padding: "2px",
+    borderRadius: "4px",
+    bgcolor: "transparent",
+    color: "#999",
+    "&:hover": { bgcolor: "#e8e8e8", color: "#555" },
+    zIndex: 1200,
+  } as const;
+
+  const rowGrip =
+    hoveredRow && !rowMenuAnchor ? (
+      <IconButton
+        data-table-grip="row"
+        size="small"
+        onClick={(e) => handleRowGripClick(e, hoveredRow.index)}
+        onMouseLeave={(e) => {
+          const related = e.relatedTarget as HTMLElement | null;
+          if (!related?.closest("td, th, [data-table-grip]")) {
+            setHoveredRow(null);
+          }
+        }}
+        aria-label="Row options"
+        sx={{
+          position: "absolute",
+          top: hoveredRow.top + hoveredRow.height / 2 - 12,
+          left: position.left - 28,
+          ...gripButtonStyles,
+        }}
+      >
+        <DragIndicatorIcon sx={{ fontSize: 18 }} />
+      </IconButton>
+    ) : null;
+
+  const colGrip =
+    hoveredColumn && !colMenuAnchor ? (
+      <IconButton
+        data-table-grip="column"
+        size="small"
+        onClick={(e) => handleColGripClick(e, hoveredColumn.index)}
+        onMouseLeave={(e) => {
+          const related = e.relatedTarget as HTMLElement | null;
+          if (!related?.closest("td, th, [data-table-grip]")) {
+            setHoveredColumn(null);
+          }
+        }}
+        aria-label="Column options"
+        sx={{
+          position: "absolute",
+          top: position.top - 28,
+          left: hoveredColumn.left + hoveredColumn.width / 2 - 12,
+          ...gripButtonStyles,
+        }}
+      >
+        <DragIndicatorIcon
+          sx={{ fontSize: 18, transform: "rotate(90deg)" }}
+        />
+      </IconButton>
+    ) : null;
 
   const addColumnButton = (
     <IconButton
@@ -175,9 +335,73 @@ export function TableMenu({ editor }: TableMenuProps) {
 
   return createPortal(
     <>
-      {menuBar}
+      {rowGrip}
+      {colGrip}
       {addColumnButton}
       {addRowButton}
+
+      <Menu
+        anchorEl={rowMenuAnchor}
+        open={Boolean(rowMenuAnchor)}
+        onClose={closeRowMenu}
+        anchorOrigin={{ vertical: "center", horizontal: "left" }}
+        transformOrigin={{ vertical: "center", horizontal: "right" }}
+        slotProps={{ paper: { sx: { minWidth: 160 } } }}
+      >
+        <MenuItem onClick={() => handleRowAction("addAbove")}>
+          <ListItemIcon>
+            <AddIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>上に行を追加</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleRowAction("addBelow")}>
+          <ListItemIcon>
+            <AddIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>下に行を追加</ListItemText>
+        </MenuItem>
+        <Divider />
+        <MenuItem
+          onClick={() => handleRowAction("delete")}
+          disabled={isHeaderRow}
+        >
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText sx={{ color: isHeaderRow ? undefined : "error.main" }}>
+            行を削除
+          </ListItemText>
+        </MenuItem>
+      </Menu>
+
+      <Menu
+        anchorEl={colMenuAnchor}
+        open={Boolean(colMenuAnchor)}
+        onClose={closeColMenu}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        transformOrigin={{ vertical: "bottom", horizontal: "center" }}
+        slotProps={{ paper: { sx: { minWidth: 160 } } }}
+      >
+        <MenuItem onClick={() => handleColAction("addLeft")}>
+          <ListItemIcon>
+            <AddIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>左に列を追加</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={() => handleColAction("addRight")}>
+          <ListItemIcon>
+            <AddIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>右に列を追加</ListItemText>
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={() => handleColAction("delete")}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText sx={{ color: "error.main" }}>列を削除</ListItemText>
+        </MenuItem>
+      </Menu>
     </>,
     document.body
   );
