@@ -11,6 +11,7 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { Markdown } from "tiptap-markdown";
 import { useEditorStore } from "@/hooks/useEditorStore";
 import { FloatingToolbar } from "./toolbar/FloatingToolbar";
+import { TableMenu } from "./toolbar/TableMenu";
 import { SlashCommand } from "./extensions/SlashCommand";
 import { MermaidBlock } from "./extensions/MermaidBlock";
 import "./styles/editor.css";
@@ -57,6 +58,7 @@ export function TiptapEditor() {
       }}
     >
       {editor && <FloatingToolbar editor={editor} />}
+      {editor && <TableMenu editor={editor} />}
       <EditorContent editor={editor} />
     </Box>
   );
