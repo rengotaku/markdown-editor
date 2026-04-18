@@ -1,15 +1,33 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { useEditorStore } from "./useEditorStore";
 
 describe("useEditorStore", () => {
-  it("has default markdown content", () => {
-    const state = useEditorStore.getState();
-    expect(state.markdown).toContain("# Welcome to Markdown Editor");
+  beforeEach(() => {
+    localStorage.clear();
+    useEditorStore.setState(useEditorStore.getInitialState());
   });
 
-  it("updates markdown via updateMarkdown", () => {
-    const { updateMarkdown } = useEditorStore.getState();
-    updateMarkdown("## Updated");
-    expect(useEditorStore.getState().markdown).toBe("## Updated");
+  it("has default JSON content with doc type", () => {
+    const state = useEditorStore.getState();
+    expect(state.content.type).toBe("doc");
+    expect(Array.isArray(state.content.content)).toBe(true);
+  });
+
+  it("has a welcome heading in default content", () => {
+    const state = useEditorStore.getState();
+    const firstBlock = state.content.content?.[0];
+    expect(firstBlock?.type).toBe("heading");
+    expect(firstBlock?.content?.[0]?.text).toBe("Welcome to Markdown Editor");
+  });
+
+  it("updates content immutably via updateContent", () => {
+    const original = useEditorStore.getState().content;
+    const newContent = { type: "doc" as const, content: [] };
+
+    useEditorStore.getState().updateContent(newContent);
+
+    const updated = useEditorStore.getState().content;
+    expect(updated).toEqual(newContent);
+    expect(updated).not.toBe(original);
   });
 });

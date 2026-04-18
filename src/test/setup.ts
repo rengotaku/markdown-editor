@@ -1,5 +1,4 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
 
 // Mock localStorage for Zustand persist middleware
 const store: Record<string, string> = {};
@@ -22,10 +21,3 @@ Object.defineProperty(globalThis, "localStorage", {
   },
   writable: true,
 });
-
-// Mock react-resizable-panels (uses ResizeObserver which jsdom doesn't support)
-vi.mock("react-resizable-panels", () => ({
-  Group: ({ children }: { children: React.ReactNode }) => children,
-  Panel: ({ children }: { children: React.ReactNode }) => children,
-  Separator: () => null,
-}));
