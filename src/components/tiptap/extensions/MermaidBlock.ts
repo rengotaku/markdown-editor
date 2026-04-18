@@ -1,6 +1,6 @@
 import { Node } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import { Fragment, Slice } from "@tiptap/pm/model";
+import { Fragment, Slice, type Node as PmNode } from "@tiptap/pm/model";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { MermaidBlockView } from "./MermaidBlockView";
 
@@ -43,8 +43,7 @@ export const MermaidBlock = Node.create({
         key: new PluginKey("mermaidPasteHandler"),
         props: {
           transformPasted(slice) {
-            const nodes: typeof slice.content extends Fragment ? any[] : never =
-              [];
+            const nodes: PmNode[] = [];
             slice.content.forEach((node) => {
               if (
                 node.type.name === "codeBlock" &&

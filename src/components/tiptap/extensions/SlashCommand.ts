@@ -1,13 +1,14 @@
+import type { Editor, Range } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { ReactRenderer } from "@tiptap/react";
 import Suggestion from "@tiptap/suggestion";
 import type { SuggestionProps, SuggestionKeyDownProps } from "@tiptap/suggestion";
 import {
   SlashCommandList,
-  getCommandItems,
   type CommandItem,
   type SlashCommandListRef,
 } from "./SlashCommandList";
+import { getCommandItems } from "./slashCommandItems";
 
 export const SlashCommand = Extension.create({
   name: "slashCommand",
@@ -21,8 +22,8 @@ export const SlashCommand = Extension.create({
           range,
           props,
         }: {
-          editor: unknown;
-          range: unknown;
+          editor: Editor;
+          range: Range;
           props: CommandItem;
         }) => {
           props.command({ editor, range });

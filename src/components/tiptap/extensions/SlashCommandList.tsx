@@ -1,28 +1,21 @@
 import {
   useState,
-  useEffect,
   useCallback,
   forwardRef,
   useImperativeHandle,
 } from "react";
+import type { Editor, Range } from "@tiptap/core";
 import Paper from "@mui/material/Paper";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
-import TitleIcon from "@mui/icons-material/Title";
-import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
-import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
-import CodeIcon from "@mui/icons-material/Code";
-import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
-import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
-import AccountTreeIcon from "@mui/icons-material/AccountTree";
 
 export interface CommandItem {
   title: string;
   description: string;
   icon: React.ReactNode;
-  command: (props: { editor: unknown; range: unknown }) => void;
+  command: (props: { editor: Editor; range: Range }) => void;
 }
 
 interface SlashCommandListProps {
@@ -34,15 +27,11 @@ export interface SlashCommandListRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
-export const SlashCommandList = forwardRef<
-  SlashCommandListRef,
-  SlashCommandListProps
->(({ items, command }, ref) => {
+function SlashCommandListInner(
+  { items, command }: SlashCommandListProps,
+  ref: React.ForwardedRef<SlashCommandListRef>
+) {
   const [selectedIndex, setSelectedIndex] = useState(0);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [items]);
 
   const selectItem = useCallback(
     (index: number) => {
@@ -92,91 +81,14 @@ export const SlashCommandList = forwardRef<
       </List>
     </Paper>
   );
-});
+}
+
+// Use key={items.length + items[0]?.title} in parent to reset state when items change.
+// The SlashCommand extension's render cycle re-creates the component on each update,
+// so selectedIndex naturally resets to 0.
+export const SlashCommandList = forwardRef<
+  SlashCommandListRef,
+  SlashCommandListProps
+>(SlashCommandListInner);
 
 SlashCommandList.displayName = "SlashCommandList";
-
-export function getCommandItems(): CommandItem[] {
-  return [
-    {
-      title: "Heading 1",
-      description: "Large section heading",
-      icon: <TitleIcon fontSize="small" />,
-      command: ({ editor, range }: { editor: any; range: any }) => {
-        editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run();
-      },
-    },
-    {
-      title: "Heading 2",
-      description: "Medium section heading",
-      icon: <TitleIcon fontSize="small" sx={{ fontSize: 18 }} />,
-      command: ({ editor, range }: { editor: any; range: any }) => {
-        editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run();
-      },
-    },
-    {
-      title: "Heading 3",
-      description: "Small section heading",
-      icon: <TitleIcon fontSize="small" sx={{ fontSize: 16 }} />,
-      command: ({ editor, range }: { editor: any; range: any }) => {
-        editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run();
-      },
-    },
-    {
-      title: "Bullet List",
-      description: "Unordered list",
-      icon: <FormatListBulletedIcon fontSize="small" />,
-      command: ({ editor, range }: { editor: any; range: any }) => {
-        editor.chain().focus().deleteRange(range).toggleBulletList().run();
-      },
-    },
-    {
-      title: "Numbered List",
-      description: "Ordered list",
-      icon: <FormatListNumberedIcon fontSize="small" />,
-      command: ({ editor, range }: { editor: any; range: any }) => {
-        editor.chain().focus().deleteRange(range).toggleOrderedList().run();
-      },
-    },
-    {
-      title: "Code Block",
-      description: "Code snippet",
-      icon: <CodeIcon fontSize="small" />,
-      command: ({ editor, range }: { editor: any; range: any }) => {
-        editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
-      },
-    },
-    {
-      title: "Blockquote",
-      description: "Quote block",
-      icon: <FormatQuoteIcon fontSize="small" />,
-      command: ({ editor, range }: { editor: any; range: any }) => {
-        editor.chain().focus().deleteRange(range).toggleBlockquote().run();
-      },
-    },
-    {
-      title: "Horizontal Rule",
-      description: "Divider line",
-      icon: <HorizontalRuleIcon fontSize="small" />,
-      command: ({ editor, range }: { editor: any; range: any }) => {
-        editor.chain().focus().deleteRange(range).setHorizontalRule().run();
-      },
-    },
-    {
-      title: "Mermaid Diagram",
-      description: "Flowchart, sequence diagram, etc.",
-      icon: <AccountTreeIcon fontSize="small" />,
-      command: ({ editor, range }: { editor: any; range: any }) => {
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .insertContent({
-            type: "mermaidBlock",
-            attrs: { code: "graph TD\n    A[Start] --> B[End]" },
-          })
-          .run();
-      },
-    },
-  ];
-}
