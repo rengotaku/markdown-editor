@@ -94,8 +94,12 @@ function useTablePosition(
       let el = dom?.parentElement ?? null;
       while (el) {
         const style = getComputedStyle(el);
-        if (style.overflow === "auto" || style.overflowY === "auto" ||
-            style.overflow === "scroll" || style.overflowY === "scroll") {
+        if (
+          style.overflow === "auto" ||
+          style.overflowY === "auto" ||
+          style.overflow === "scroll" ||
+          style.overflowY === "scroll"
+        ) {
           return el;
         }
         el = el.parentElement;
@@ -127,9 +131,7 @@ function useTablePosition(
 
 function useTableHover(editor: Editor) {
   const [hoveredRow, setHoveredRow] = useState<HoveredRow | null>(null);
-  const [hoveredColumn, setHoveredColumn] = useState<HoveredColumn | null>(
-    null
-  );
+  const [hoveredColumn, setHoveredColumn] = useState<HoveredColumn | null>(null);
   const tableRef = useRef<HTMLTableElement | null>(null);
   const gripHoveredRef = useRef(false);
   const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -291,19 +293,13 @@ export function TableMenu({ editor }: TableMenuProps) {
   const [activeRowIndex, setActiveRowIndex] = useState<number>(-1);
   const [activeColIndex, setActiveColIndex] = useState<number>(-1);
 
-  const handleRowGripClick = (
-    e: React.MouseEvent<HTMLElement>,
-    rowIndex: number
-  ) => {
+  const handleRowGripClick = (e: React.MouseEvent<HTMLElement>, rowIndex: number) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setRowMenuPos({ top: rect.bottom, left: rect.left });
     setActiveRowIndex(rowIndex);
   };
 
-  const handleColGripClick = (
-    e: React.MouseEvent<HTMLElement>,
-    colIndex: number
-  ) => {
+  const handleColGripClick = (e: React.MouseEvent<HTMLElement>, colIndex: number) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setColMenuPos({ top: rect.bottom, left: rect.left });
     setActiveColIndex(colIndex);
@@ -420,9 +416,7 @@ export function TableMenu({ editor }: TableMenuProps) {
           ...gripButtonStyles,
         }}
       >
-        <DragIndicatorIcon
-          sx={{ fontSize: 14, transform: "rotate(90deg)" }}
-        />
+        <DragIndicatorIcon sx={{ fontSize: 14, transform: "rotate(90deg)" }} />
       </IconButton>
     ) : null;
 
@@ -431,8 +425,8 @@ export function TableMenu({ editor }: TableMenuProps) {
       size="small"
       onClick={() => {
         const lastColIndex =
-          (tableRef.current?.querySelector("tr")?.querySelectorAll("td, th")
-            .length ?? 1) - 1;
+          (tableRef.current?.querySelector("tr")?.querySelectorAll("td, th").length ??
+            1) - 1;
         focusHoveredTable(0, lastColIndex);
         editor.chain().focus().addColumnAfter().run();
       }}
@@ -459,8 +453,7 @@ export function TableMenu({ editor }: TableMenuProps) {
     <IconButton
       size="small"
       onClick={() => {
-        const lastRowIndex =
-          (tableRef.current?.querySelectorAll("tr").length ?? 1) - 1;
+        const lastRowIndex = (tableRef.current?.querySelectorAll("tr").length ?? 1) - 1;
         focusHoveredTable(lastRowIndex, 0);
         editor.chain().focus().addRowAfter().run();
       }}
@@ -510,10 +503,7 @@ export function TableMenu({ editor }: TableMenuProps) {
           <ListItemText>下に行を追加</ListItemText>
         </MenuItem>
         <Divider />
-        <MenuItem
-          onClick={() => handleRowAction("delete")}
-          disabled={isHeaderRow}
-        >
+        <MenuItem onClick={() => handleRowAction("delete")} disabled={isHeaderRow}>
           <ListItemIcon>
             <DeleteIcon fontSize="small" color="error" />
           </ListItemIcon>
