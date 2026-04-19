@@ -162,6 +162,7 @@ function useTableHover(editor: Editor) {
     if (gripHoveredRef.current) return;
     setHoveredRow(null);
     setHoveredColumn(null);
+    tableRef.current = null;
   }, []);
 
   const scheduleClearHover = useCallback(() => {
@@ -190,7 +191,6 @@ function useTableHover(editor: Editor) {
       const tableEl = cell?.closest("table") ?? null;
       if (!tableEl) {
         scheduleClearHover();
-        tableRef.current = null;
         return;
       }
       tableRef.current = tableEl;
@@ -447,7 +447,10 @@ export function TableMenu({ editor }: TableMenuProps) {
     <IconButton
       size="small"
       onClick={() => {
-        focusHoveredTable(0, 0);
+        const lastColIndex =
+          (tableRef.current?.querySelector("tr")?.querySelectorAll("td, th")
+            .length ?? 1) - 1;
+        focusHoveredTable(0, lastColIndex);
         editor.chain().focus().addColumnAfter().run();
       }}
       onMouseEnter={onGripEnter}
@@ -473,7 +476,9 @@ export function TableMenu({ editor }: TableMenuProps) {
     <IconButton
       size="small"
       onClick={() => {
-        focusHoveredTable(0, 0);
+        const lastRowIndex =
+          (tableRef.current?.querySelectorAll("tr").length ?? 1) - 1;
+        focusHoveredTable(lastRowIndex, 0);
         editor.chain().focus().addRowAfter().run();
       }}
       onMouseEnter={onGripEnter}
