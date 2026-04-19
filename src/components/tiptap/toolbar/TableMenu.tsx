@@ -77,15 +77,44 @@ function useTablePosition(editor: Editor): TablePosition | null {
         rafId2 = requestAnimationFrame(updatePosition);
       });
     };
+    const handleScroll = () => {
+      setPosition(null);
+    };
     editor.on("selectionUpdate", handler);
     editor.on("update", handler);
     editor.on("transaction", handler);
+
+    const findScrollParent = (): HTMLElement | null => {
+      const dom = getEditorDom(editor);
+      let el = dom?.parentElement ?? null;
+      while (el) {
+        const style = getComputedStyle(el);
+        if (style.overflow === "auto" || style.overflowY === "auto" ||
+            style.overflow === "scroll" || style.overflowY === "scroll") {
+          return el;
+        }
+        el = el.parentElement;
+      }
+      return null;
+    };
+
+    let scrollEl = findScrollParent();
+    scrollEl?.addEventListener("scroll", handleScroll);
+
+    const attachScroll = () => {
+      scrollEl = findScrollParent();
+      scrollEl?.addEventListener("scroll", handleScroll);
+    };
+    editor.on("create", attachScroll);
+
     return () => {
       cancelAnimationFrame(rafId1);
       cancelAnimationFrame(rafId2);
       editor.off("selectionUpdate", handler);
       editor.off("update", handler);
       editor.off("transaction", handler);
+      editor.off("create", attachScroll);
+      scrollEl?.removeEventListener("scroll", handleScroll);
     };
   }, [editor, updatePosition]);
 
