@@ -264,8 +264,12 @@ function useTableHover(editor: Editor) {
   };
 }
 
-function focusCellAt(editor: Editor, rowIndex: number, colIndex: number) {
-  const tableEl = getActiveTableEl(editor);
+function focusCellAt(
+  editor: Editor,
+  tableEl: HTMLTableElement | null,
+  rowIndex: number,
+  colIndex: number
+) {
   if (!tableEl) return;
   const rows = tableEl.querySelectorAll("tr");
   const targetRow = rows[rowIndex];
@@ -338,8 +342,12 @@ export function TableMenu({ editor }: TableMenuProps) {
     onGripLeave();
   };
 
+  const focusHoveredTable = (rowIndex: number, colIndex: number) => {
+    focusCellAt(editor, tableRef.current, rowIndex, colIndex);
+  };
+
   const handleRowAction = (action: "addAbove" | "addBelow" | "delete") => {
-    focusCellAt(editor, activeRowIndex, 0);
+    focusHoveredTable(activeRowIndex, 0);
     switch (action) {
       case "addAbove":
         editor.chain().focus().addRowBefore().run();
@@ -355,7 +363,7 @@ export function TableMenu({ editor }: TableMenuProps) {
   };
 
   const handleColAction = (action: "addLeft" | "addRight" | "delete") => {
-    focusCellAt(editor, 0, activeColIndex);
+    focusHoveredTable(0, activeColIndex);
     switch (action) {
       case "addLeft":
         editor.chain().focus().addColumnBefore().run();
@@ -438,7 +446,10 @@ export function TableMenu({ editor }: TableMenuProps) {
   const addColumnButton = (
     <IconButton
       size="small"
-      onClick={() => editor.chain().focus().addColumnAfter().run()}
+      onClick={() => {
+        focusHoveredTable(0, 0);
+        editor.chain().focus().addColumnAfter().run();
+      }}
       aria-label="Add column at end"
       sx={{
         position: "absolute",
@@ -459,7 +470,10 @@ export function TableMenu({ editor }: TableMenuProps) {
   const addRowButton = (
     <IconButton
       size="small"
-      onClick={() => editor.chain().focus().addRowAfter().run()}
+      onClick={() => {
+        focusHoveredTable(0, 0);
+        editor.chain().focus().addRowAfter().run();
+      }}
       aria-label="Add row at end"
       sx={{
         position: "absolute",
