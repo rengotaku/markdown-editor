@@ -102,10 +102,12 @@
 .ProseMirror th,
 .ProseMirror td {
   border: 1px solid #ddd;
-  padding: 8px 12px;
+  padding: 4px 8px;
   position: relative;
   min-width: 80px;
   vertical-align: top;
+  font-size: 0.875rem;
+  line-height: 1.4;
 }
 
 .ProseMirror th {
