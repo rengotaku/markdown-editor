@@ -266,6 +266,7 @@ export function TableMenu({ editor }: TableMenuProps) {
     setActiveRowIndex(-1);
     setHoveredRow(null);
     setHoveredColumn(null);
+    onGripLeave();
   };
 
   const closeColMenu = () => {
@@ -273,6 +274,7 @@ export function TableMenu({ editor }: TableMenuProps) {
     setActiveColIndex(-1);
     setHoveredRow(null);
     setHoveredColumn(null);
+    onGripLeave();
   };
 
   const handleRowAction = (action: "addAbove" | "addBelow" | "delete") => {
