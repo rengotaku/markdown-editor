@@ -68,10 +68,15 @@ function useTablePosition(editor: Editor): TablePosition | null {
   }, [editor]);
 
   useEffect(() => {
-    const handler = () => updatePosition();
+    let rafId = 0;
+    const handler = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updatePosition);
+    };
     editor.on("selectionUpdate", handler);
     editor.on("update", handler);
     return () => {
+      cancelAnimationFrame(rafId);
       editor.off("selectionUpdate", handler);
       editor.off("update", handler);
     };
