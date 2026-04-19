@@ -5,6 +5,7 @@ import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
 import CodeIcon from "@mui/icons-material/Code";
 import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
 import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
+import TableChartIcon from "@mui/icons-material/TableChart";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import type { CommandItem } from "./SlashCommandList";
 
@@ -72,6 +73,19 @@ export function getCommandItems(): CommandItem[] {
       icon: <HorizontalRuleIcon fontSize="small" />,
       command: ({ editor, range }: { editor: Editor; range: Range }) => {
         editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+      },
+    },
+    {
+      title: "Table",
+      description: "Insert a table",
+      icon: <TableChartIcon fontSize="small" />,
+      command: ({ editor, range }: { editor: Editor; range: Range }) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+          .run();
       },
     },
     {
