@@ -264,11 +264,15 @@ export function TableMenu({ editor }: TableMenuProps) {
   const closeRowMenu = () => {
     setRowMenuPos(null);
     setActiveRowIndex(-1);
+    setHoveredRow(null);
+    setHoveredColumn(null);
   };
 
   const closeColMenu = () => {
     setColMenuPos(null);
     setActiveColIndex(-1);
+    setHoveredRow(null);
+    setHoveredColumn(null);
   };
 
   const handleRowAction = (action: "addAbove" | "addBelow" | "delete") => {
