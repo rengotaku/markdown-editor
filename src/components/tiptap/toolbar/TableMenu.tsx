@@ -450,6 +450,8 @@ export function TableMenu({ editor }: TableMenuProps) {
         focusHoveredTable(0, 0);
         editor.chain().focus().addColumnAfter().run();
       }}
+      onMouseEnter={onGripEnter}
+      onMouseLeave={onGripLeave}
       aria-label="Add column at end"
       sx={{
         position: "absolute",
@@ -474,6 +476,8 @@ export function TableMenu({ editor }: TableMenuProps) {
         focusHoveredTable(0, 0);
         editor.chain().focus().addRowAfter().run();
       }}
+      onMouseEnter={onGripEnter}
+      onMouseLeave={onGripLeave}
       aria-label="Add row at end"
       sx={{
         position: "absolute",
