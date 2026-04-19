@@ -68,17 +68,24 @@ function useTablePosition(editor: Editor): TablePosition | null {
   }, [editor]);
 
   useEffect(() => {
-    let rafId = 0;
+    let rafId1 = 0;
+    let rafId2 = 0;
     const handler = () => {
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(updatePosition);
+      cancelAnimationFrame(rafId1);
+      cancelAnimationFrame(rafId2);
+      rafId1 = requestAnimationFrame(() => {
+        rafId2 = requestAnimationFrame(updatePosition);
+      });
     };
     editor.on("selectionUpdate", handler);
     editor.on("update", handler);
+    editor.on("transaction", handler);
     return () => {
-      cancelAnimationFrame(rafId);
+      cancelAnimationFrame(rafId1);
+      cancelAnimationFrame(rafId2);
       editor.off("selectionUpdate", handler);
       editor.off("update", handler);
+      editor.off("transaction", handler);
     };
   }, [editor, updatePosition]);
 
