@@ -62,7 +62,9 @@ interface HoveredColumn {
 
 function useTablePosition(
   editor: Editor,
-  hoveredTableRef: React.RefObject<HTMLTableElement | null>
+  hoveredTableRef: React.RefObject<HTMLTableElement | null>,
+  hoveredRow: HoveredRow | null,
+  hoveredColumn: HoveredColumn | null
 ): TablePosition | null {
   const [position, setPosition] = useState<TablePosition | null>(null);
 
@@ -82,6 +84,12 @@ function useTablePosition(
     });
   }, [hoveredTableRef]);
 
+  // ホバー行/列が変わったら位置を再計算
+  useEffect(() => {
+    updatePosition();
+  }, [hoveredRow, hoveredColumn, updatePosition]);
+
+  // エディタの内容変更時も再計算（列追加等でサイズ変わる）
   useEffect(() => {
     let rafId1 = 0;
     let rafId2 = 0;
@@ -95,7 +103,6 @@ function useTablePosition(
     const handleScroll = () => {
       setPosition(null);
     };
-    editor.on("selectionUpdate", handler);
     editor.on("update", handler);
     editor.on("transaction", handler);
 
@@ -125,7 +132,6 @@ function useTablePosition(
     return () => {
       cancelAnimationFrame(rafId1);
       cancelAnimationFrame(rafId2);
-      editor.off("selectionUpdate", handler);
       editor.off("update", handler);
       editor.off("transaction", handler);
       editor.off("create", attachScroll);
@@ -285,7 +291,7 @@ export function TableMenu({ editor }: TableMenuProps) {
     onGripLeave,
     tableRef,
   } = useTableHover(editor);
-  const position = useTablePosition(editor, tableRef);
+  const position = useTablePosition(editor, tableRef, hoveredRow, hoveredColumn);
 
   const [rowMenuPos, setRowMenuPos] = useState<{
     top: number;
