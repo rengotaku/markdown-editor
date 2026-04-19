@@ -384,13 +384,13 @@ export function TableMenu({ editor }: TableMenuProps) {
         onMouseLeave={onGripLeave}
         aria-label="Row options"
         sx={{
+          ...gripButtonStyles,
           position: "absolute",
           top: hoveredRow.top,
           left: position.left - 22,
           width: 20,
           height: hoveredRow.height,
           borderRadius: "3px 0 0 3px",
-          ...gripButtonStyles,
         }}
       >
         <DragIndicatorIcon sx={{ fontSize: 14 }} />
@@ -407,13 +407,13 @@ export function TableMenu({ editor }: TableMenuProps) {
         onMouseLeave={onGripLeave}
         aria-label="Column options"
         sx={{
+          ...gripButtonStyles,
           position: "absolute",
           top: position.top - 20,
           left: hoveredColumn.left,
           width: hoveredColumn.width,
           height: 18,
           borderRadius: "3px 3px 0 0",
-          ...gripButtonStyles,
         }}
       >
         <DragIndicatorIcon sx={{ fontSize: 14, transform: "rotate(90deg)" }} />
