@@ -60,16 +60,14 @@ interface HoveredColumn {
   width: number;
 }
 
-function useTablePosition(editor: Editor): TablePosition | null {
+function useTablePosition(
+  editor: Editor,
+  hoveredTableRef: React.RefObject<HTMLTableElement | null>
+): TablePosition | null {
   const [position, setPosition] = useState<TablePosition | null>(null);
 
   const updatePosition = useCallback(() => {
-    if (!getEditorDom(editor) || !editor.isActive("table")) {
-      setPosition(null);
-      return;
-    }
-
-    const tableEl = getActiveTableEl(editor);
+    const tableEl = hoveredTableRef.current;
     if (!tableEl) {
       setPosition(null);
       return;
@@ -82,7 +80,7 @@ function useTablePosition(editor: Editor): TablePosition | null {
       width: rect.width,
       height: rect.height,
     });
-  }, [editor]);
+  }, [hoveredTableRef]);
 
   useEffect(() => {
     let rafId1 = 0;
@@ -256,6 +254,7 @@ function useTableHover(editor: Editor) {
     setHoveredColumn,
     onGripEnter,
     onGripLeave,
+    tableRef,
   };
 }
 
@@ -277,7 +276,6 @@ function focusCellAt(editor: Editor, rowIndex: number, colIndex: number) {
 }
 
 export function TableMenu({ editor }: TableMenuProps) {
-  const position = useTablePosition(editor);
   const {
     hoveredRow,
     hoveredColumn,
@@ -285,7 +283,9 @@ export function TableMenu({ editor }: TableMenuProps) {
     setHoveredColumn,
     onGripEnter,
     onGripLeave,
+    tableRef,
   } = useTableHover(editor);
+  const position = useTablePosition(editor, tableRef);
 
   const [rowMenuPos, setRowMenuPos] = useState<{
     top: number;
