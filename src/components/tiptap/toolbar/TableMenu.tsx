@@ -23,24 +23,6 @@ function getEditorDom(editor: Editor): HTMLElement | null {
   }
 }
 
-function getActiveTableEl(editor: Editor): HTMLTableElement | null {
-  try {
-    const { $from } = editor.state.selection;
-    for (let depth = $from.depth; depth > 0; depth--) {
-      const node = $from.node(depth);
-      if (node.type.name === "table") {
-        const domNode = editor.view.nodeDOM(
-          $from.before(depth)
-        ) as HTMLElement | null;
-        return domNode?.querySelector("table") ?? (domNode as HTMLTableElement | null);
-      }
-    }
-  } catch {
-    // view not available
-  }
-  return null;
-}
-
 interface TablePosition {
   top: number;
   left: number;
@@ -86,7 +68,8 @@ function useTablePosition(
 
   // ホバー行/列が変わったら位置を再計算
   useEffect(() => {
-    updatePosition();
+    const id = requestAnimationFrame(updatePosition);
+    return () => cancelAnimationFrame(id);
   }, [hoveredRow, hoveredColumn, updatePosition]);
 
   // エディタの内容変更時も再計算（列追加等でサイズ変わる）
