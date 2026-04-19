@@ -23,6 +23,24 @@ function getEditorDom(editor: Editor): HTMLElement | null {
   }
 }
 
+function getActiveTableEl(editor: Editor): HTMLTableElement | null {
+  try {
+    const { $from } = editor.state.selection;
+    for (let depth = $from.depth; depth > 0; depth--) {
+      const node = $from.node(depth);
+      if (node.type.name === "table") {
+        const domNode = editor.view.nodeDOM(
+          $from.before(depth)
+        ) as HTMLElement | null;
+        return domNode?.querySelector("table") ?? (domNode as HTMLTableElement | null);
+      }
+    }
+  } catch {
+    // view not available
+  }
+  return null;
+}
+
 interface TablePosition {
   top: number;
   left: number;
@@ -46,13 +64,12 @@ function useTablePosition(editor: Editor): TablePosition | null {
   const [position, setPosition] = useState<TablePosition | null>(null);
 
   const updatePosition = useCallback(() => {
-    const dom = getEditorDom(editor);
-    if (!dom || !editor.isActive("table")) {
+    if (!getEditorDom(editor) || !editor.isActive("table")) {
       setPosition(null);
       return;
     }
 
-    const tableEl = dom.querySelector("table");
+    const tableEl = getActiveTableEl(editor);
     if (!tableEl) {
       setPosition(null);
       return;
@@ -164,18 +181,17 @@ function useTableHover(editor: Editor) {
       if (gripHoveredRef.current) return;
       cancelLeaveTimer();
 
-      const dom = getEditorDom(editor);
-      const tableEl = dom?.querySelector("table");
+      const target = e.target as HTMLElement;
+      const cell = target.closest("td, th");
+      const tableEl = cell?.closest("table") ?? null;
       if (!tableEl) {
-        clearHover();
+        scheduleClearHover();
         tableRef.current = null;
         return;
       }
       tableRef.current = tableEl;
 
-      const target = e.target as HTMLElement;
-      const cell = target.closest("td, th");
-      if (!cell || !tableEl.contains(cell)) {
+      if (!cell) {
         scheduleClearHover();
         return;
       }
@@ -244,9 +260,7 @@ function useTableHover(editor: Editor) {
 }
 
 function focusCellAt(editor: Editor, rowIndex: number, colIndex: number) {
-  const dom = getEditorDom(editor);
-  if (!dom) return;
-  const tableEl = dom.querySelector("table");
+  const tableEl = getActiveTableEl(editor);
   if (!tableEl) return;
   const rows = tableEl.querySelectorAll("tr");
   const targetRow = rows[rowIndex];
