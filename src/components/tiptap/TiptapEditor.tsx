@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import Box from "@mui/material/Box";
+import Alert from "@mui/material/Alert";
+import Snackbar from "@mui/material/Snackbar";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -10,6 +12,7 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { Markdown } from "tiptap-markdown";
 import { useEditorStore } from "@/hooks/useEditorStore";
+import { useFileDrop } from "@/hooks/useFileDrop";
 import { FloatingToolbar } from "./toolbar/FloatingToolbar";
 import { TableMenu } from "./toolbar/TableMenu";
 import { SlashCommand } from "./extensions/SlashCommand";
@@ -18,6 +21,7 @@ import "./styles/editor.css";
 
 export function TiptapEditor() {
   const content = useEditorStore((s) => s.content);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -43,6 +47,19 @@ export function TiptapEditor() {
     },
   });
 
+  const handleDropMarkdown = useCallback(
+    (markdownText: string) => {
+      if (!editor) return;
+      editor.commands.setContent(markdownText);
+    },
+    [editor]
+  );
+
+  const { isDragging, error, clearError } = useFileDrop({
+    onDropMarkdown: handleDropMarkdown,
+    targetRef: containerRef,
+  });
+
   useEffect(() => {
     return () => {
       editor?.destroy();
@@ -51,15 +68,66 @@ export function TiptapEditor() {
 
   return (
     <Box
+      ref={containerRef}
       sx={{
         height: "100%",
         overflow: "auto",
+        position: "relative",
         "& .ProseMirror": { minHeight: "100%" },
       }}
     >
       {editor && <FloatingToolbar editor={editor} />}
       {editor && <TableMenu editor={editor} />}
       <EditorContent editor={editor} />
+
+      {isDragging && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            bgcolor: "rgba(25, 118, 210, 0.08)",
+            border: "2px dashed",
+            borderColor: "primary.main",
+            borderRadius: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1300,
+            pointerEvents: "none",
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: "background.paper",
+              px: 3,
+              py: 1.5,
+              borderRadius: 1,
+              boxShadow: 1,
+              color: "primary.main",
+              fontWeight: 600,
+              fontSize: "0.875rem",
+            }}
+          >
+            マークダウンファイルをドロップして読み込み
+          </Box>
+        </Box>
+      )}
+
+      <Snackbar
+        open={Boolean(error)}
+        autoHideDuration={5000}
+        onClose={clearError}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={clearError}
+          severity="error"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
