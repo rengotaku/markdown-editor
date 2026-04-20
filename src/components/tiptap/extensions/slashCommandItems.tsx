@@ -2,6 +2,7 @@ import type { Editor, Range } from "@tiptap/core";
 import TitleIcon from "@mui/icons-material/Title";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
+import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import CodeIcon from "@mui/icons-material/Code";
 import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
 import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
@@ -49,6 +50,14 @@ export function getCommandItems(): CommandItem[] {
       icon: <FormatListNumberedIcon fontSize="small" />,
       command: ({ editor, range }: { editor: Editor; range: Range }) => {
         editor.chain().focus().deleteRange(range).toggleOrderedList().run();
+      },
+    },
+    {
+      title: "Task List",
+      description: "Checkbox list",
+      icon: <CheckBoxIcon fontSize="small" />,
+      command: ({ editor, range }: { editor: Editor; range: Range }) => {
+        editor.chain().focus().deleteRange(range).toggleTaskList().run();
       },
     },
     {
