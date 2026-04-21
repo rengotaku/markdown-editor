@@ -96,13 +96,18 @@ export function Layout({ children }: LayoutProps) {
       >
         <Toolbar
           variant="dense"
-          sx={{ gap: 1, minHeight: 36, "@media (min-width: 600px)": { minHeight: 36 } }}
+          sx={{
+            gap: 0.5,
+            minHeight: 27,
+            px: 1,
+            "@media (min-width: 600px)": { minHeight: 27 },
+          }}
         >
           <Box
             component="img"
             src="/logo.png"
             alt="Markdown Editor"
-            sx={{ height: 24, width: 24, flexGrow: 0, display: "block" }}
+            sx={{ height: 20, width: 20, flexGrow: 0, display: "block" }}
           />
           <Box sx={{ flexGrow: 1 }} />
           <Tooltip title="Markdown をコピー">
@@ -113,8 +118,9 @@ export function Layout({ children }: LayoutProps) {
                 onClick={handleCopy}
                 disabled={!hasEditor}
                 aria-label="copy markdown"
+                sx={{ p: 0.25 }}
               >
-                <ContentCopyIcon fontSize="small" />
+                <ContentCopyIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </span>
           </Tooltip>
@@ -126,8 +132,9 @@ export function Layout({ children }: LayoutProps) {
                 onClick={handleExport}
                 disabled={!hasEditor}
                 aria-label="export markdown"
+                sx={{ p: 0.25 }}
               >
-                <DownloadIcon fontSize="small" />
+                <DownloadIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </span>
           </Tooltip>
@@ -139,8 +146,9 @@ export function Layout({ children }: LayoutProps) {
                 onClick={() => setConfirmOpen(true)}
                 disabled={!hasEditor}
                 aria-label="clear editor"
+                sx={{ p: 0.25 }}
               >
-                <RestartAltIcon fontSize="small" />
+                <RestartAltIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </span>
           </Tooltip>
