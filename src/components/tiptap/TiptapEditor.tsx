@@ -15,6 +15,7 @@ import { TaskItem } from "@tiptap/extension-task-item";
 import { Markdown } from "tiptap-markdown";
 import { useEditorStore } from "@/hooks/useEditorStore";
 import { useEditorInstance } from "@/hooks/useEditorInstance";
+import { useEditorPrefs } from "@/hooks/useEditorPrefs";
 import { useFileDrop } from "@/hooks/useFileDrop";
 import { FloatingToolbar } from "./toolbar/FloatingToolbar";
 import { TableMenu } from "./toolbar/TableMenu";
@@ -24,6 +25,7 @@ import "./styles/editor.css";
 
 export function TiptapEditor() {
   const content = useEditorStore((s) => s.content);
+  const centered = useEditorPrefs((s) => s.centered);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const editor = useEditor({
@@ -76,6 +78,7 @@ export function TiptapEditor() {
   return (
     <Box
       ref={containerRef}
+      className={centered ? "editor-centered" : undefined}
       sx={{
         height: "100%",
         overflow: "auto",
