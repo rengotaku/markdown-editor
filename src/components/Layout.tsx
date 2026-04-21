@@ -12,11 +12,13 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
+import Switch from "@mui/material/Switch";
 import DownloadIcon from "@mui/icons-material/Download";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { useEditorInstance } from "@/hooks/useEditorInstance";
 import { useEditorStore, EMPTY_CONTENT } from "@/hooks/useEditorStore";
+import { useEditorPrefs } from "@/hooks/useEditorPrefs";
 
 interface LayoutProps {
   children: ReactNode;
@@ -28,6 +30,8 @@ type Feedback = { message: string; severity: FeedbackSeverity } | null;
 export function Layout({ children }: LayoutProps) {
   const editor = useEditorInstance((s) => s.editor);
   const reset = useEditorStore((s) => s.reset);
+  const centered = useEditorPrefs((s) => s.centered);
+  const toggleCentered = useEditorPrefs((s) => s.toggleCentered);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -110,6 +114,15 @@ export function Layout({ children }: LayoutProps) {
             sx={{ height: 20, width: 20, flexGrow: 0, display: "block" }}
           />
           <Box sx={{ flexGrow: 1 }} />
+          <Tooltip title={centered ? "全幅表示に切り替え" : "中央寄せに切り替え"}>
+            <Switch
+              checked={centered}
+              onChange={toggleCentered}
+              size="small"
+              sx={{ mx: 0.5 }}
+              inputProps={{ "aria-label": "toggle centered layout" }}
+            />
+          </Tooltip>
           <Tooltip title="Markdown をコピー">
             <span>
               <IconButton
