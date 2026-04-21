@@ -7,8 +7,8 @@ vi.mock("@/components/tiptap/TiptapEditor", () => ({
 }));
 
 describe("App", () => {
-  it("renders the Markdown Editor title", () => {
+  it("renders the Markdown Editor logo", () => {
     render(<App />);
-    expect(screen.getByText("Markdown Editor")).toBeInTheDocument();
+    expect(screen.getByAltText("Markdown Editor")).toBeInTheDocument();
   });
 });
