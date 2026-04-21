@@ -14,6 +14,7 @@ import { TaskList } from "@tiptap/extension-task-list";
 import { TaskItem } from "@tiptap/extension-task-item";
 import { Markdown } from "tiptap-markdown";
 import { useEditorStore } from "@/hooks/useEditorStore";
+import { useEditorInstance } from "@/hooks/useEditorInstance";
 import { useFileDrop } from "@/hooks/useFileDrop";
 import { FloatingToolbar } from "./toolbar/FloatingToolbar";
 import { TableMenu } from "./toolbar/TableMenu";
@@ -65,7 +66,9 @@ export function TiptapEditor() {
   });
 
   useEffect(() => {
+    useEditorInstance.getState().setEditor(editor ?? null);
     return () => {
+      useEditorInstance.getState().setEditor(null);
       editor?.destroy();
     };
   }, [editor]);

@@ -100,9 +100,15 @@ const DEFAULT_CONTENT: JSONContent = {
   ],
 };
 
+const EMPTY_CONTENT: JSONContent = {
+  type: "doc",
+  content: [{ type: "paragraph" }],
+};
+
 interface EditorState {
   content: JSONContent;
   updateContent: (value: JSONContent) => void;
+  reset: () => void;
 }
 
 export const useEditorStore = create<EditorState>()(
@@ -110,11 +116,18 @@ export const useEditorStore = create<EditorState>()(
     (set) => ({
       content: DEFAULT_CONTENT,
       updateContent: (value) => set({ content: value }),
+      reset: () => set({ content: EMPTY_CONTENT }),
     }),
     {
       name: "markdown-editor-storage",
       version: 1,
-      migrate: () => ({ content: DEFAULT_CONTENT, updateContent: () => {} }),
+      migrate: () => ({
+        content: DEFAULT_CONTENT,
+        updateContent: () => {},
+        reset: () => {},
+      }),
     }
   )
 );
+
+export { EMPTY_CONTENT };
