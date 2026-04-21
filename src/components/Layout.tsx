@@ -1,7 +1,6 @@
 import { useState, useCallback, type ReactNode } from "react";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
@@ -83,11 +82,29 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <AppBar position="sticky" sx={{ top: 0, flexShrink: 0, zIndex: 1400 }}>
-        <Toolbar variant="dense" sx={{ gap: 1 }}>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Markdown Editor
-          </Typography>
+      <AppBar
+        position="sticky"
+        elevation={0}
+        sx={{
+          top: 0,
+          flexShrink: 0,
+          zIndex: 1400,
+          bgcolor: "#ffffff",
+          color: "#333",
+          borderBottom: "1px solid #e0e0e0",
+        }}
+      >
+        <Toolbar
+          variant="dense"
+          sx={{ gap: 1, minHeight: 36, "@media (min-width: 600px)": { minHeight: 36 } }}
+        >
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="Markdown Editor"
+            sx={{ height: 24, width: 24, flexGrow: 0, display: "block" }}
+          />
+          <Box sx={{ flexGrow: 1 }} />
           <Tooltip title="Markdown をコピー">
             <span>
               <IconButton
