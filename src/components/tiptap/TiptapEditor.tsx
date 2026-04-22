@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
@@ -13,6 +13,7 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { TaskList } from "@tiptap/extension-task-list";
 import { TaskItem } from "@tiptap/extension-task-item";
 import { DragHandle } from "@tiptap/extension-drag-handle-react";
+import { offset } from "@floating-ui/dom";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { Markdown } from "tiptap-markdown";
 import { useEditorStore } from "@/hooks/useEditorStore";
@@ -69,6 +70,19 @@ export function TiptapEditor() {
     targetRef: containerRef,
   });
 
+  const dragHandleNested = useMemo(
+    () => ({ edgeDetection: "none" as const }),
+    []
+  );
+  const dragHandlePosition = useMemo(
+    () => ({
+      placement: "left-start" as const,
+      strategy: "absolute" as const,
+      middleware: [offset(16)],
+    }),
+    []
+  );
+
   useEffect(() => {
     useEditorInstance.getState().setEditor(editor ?? null);
     return () => {
@@ -91,7 +105,12 @@ export function TiptapEditor() {
       {editor && <FloatingToolbar editor={editor} />}
       {editor && <TableMenu editor={editor} />}
       {editor && (
-        <DragHandle editor={editor} className="drag-handle" nested>
+        <DragHandle
+          editor={editor}
+          className="drag-handle"
+          nested={dragHandleNested}
+          computePositionConfig={dragHandlePosition}
+        >
           <DragIndicatorIcon fontSize="small" />
         </DragHandle>
       )}
