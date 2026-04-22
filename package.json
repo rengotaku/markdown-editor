@@ -23,6 +23,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@mui/icons-material": "^7.3.9",
     "@mui/material": "^7.3.9",
+    "@tiptap/extension-drag-handle-react": "^3.22.4",
     "@tiptap/extension-link": "^3.22.3",
     "@tiptap/extension-placeholder": "^3.22.3",
     "@tiptap/extension-table": "^3.22.3",

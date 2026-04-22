@@ -12,6 +12,8 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TaskList } from "@tiptap/extension-task-list";
 import { TaskItem } from "@tiptap/extension-task-item";
+import { DragHandle } from "@tiptap/extension-drag-handle-react";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { Markdown } from "tiptap-markdown";
 import { useEditorStore } from "@/hooks/useEditorStore";
 import { useEditorInstance } from "@/hooks/useEditorInstance";
@@ -88,6 +90,11 @@ export function TiptapEditor() {
     >
       {editor && <FloatingToolbar editor={editor} />}
       {editor && <TableMenu editor={editor} />}
+      {editor && (
+        <DragHandle editor={editor} className="drag-handle" nested>
+          <DragIndicatorIcon fontSize="small" />
+        </DragHandle>
+      )}
       <EditorContent editor={editor} />
 
       {isDragging && (

@@ -179,3 +179,33 @@
   color: #999;
   text-decoration: line-through;
 }
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 24px;
+  color: #adb5bd;
+  cursor: grab;
+  border-radius: 4px;
+  transition: background-color 120ms ease;
+  z-index: 10;
+}
+
+.drag-handle:hover {
+  background-color: rgba(55, 53, 47, 0.08);
+  color: #6c757d;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  background-color: rgba(55, 53, 47, 0.12);
+}
+
+.ProseMirror-dropcursor,
+.prosemirror-dropcursor-block,
+.prosemirror-dropcursor-inline {
+  background-color: #1565c0 !important;
+  border-color: #1565c0 !important;
+}
