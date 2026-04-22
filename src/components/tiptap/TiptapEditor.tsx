@@ -33,7 +33,7 @@ export function TiptapEditor() {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({ link: false }),
       Placeholder.configure({
         placeholder: "Start writing, or type / for commands...",
       }),
