@@ -184,9 +184,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 24px;
-  color: #adb5bd;
+  width: 24px;
+  height: 28px;
+  color: #6c757d;
   cursor: grab;
   border-radius: 4px;
   transition: background-color 120ms ease;
@@ -195,7 +195,7 @@
 
 .drag-handle:hover {
   background-color: rgba(55, 53, 47, 0.08);
-  color: #6c757d;
+  color: #212529;
 }
 
 .drag-handle:active {
