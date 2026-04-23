@@ -193,6 +193,15 @@
   z-index: 10;
 }
 
+.drag-handle::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 16px;
+}
+
 .drag-handle:hover {
   background-color: rgba(55, 53, 47, 0.08);
   color: #212529;
