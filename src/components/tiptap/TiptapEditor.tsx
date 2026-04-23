@@ -20,7 +20,6 @@ import { useEditorStore } from "@/hooks/useEditorStore";
 import { useEditorInstance } from "@/hooks/useEditorInstance";
 import { useEditorPrefs } from "@/hooks/useEditorPrefs";
 import { useFileDrop } from "@/hooks/useFileDrop";
-import { FloatingToolbar } from "./toolbar/FloatingToolbar";
 import { TableMenu } from "./toolbar/TableMenu";
 import { SlashCommand } from "./extensions/SlashCommand";
 import { MermaidBlock } from "./extensions/MermaidBlock";
@@ -102,7 +101,6 @@ export function TiptapEditor() {
         "& .ProseMirror": { minHeight: "100%" },
       }}
     >
-      {editor && <FloatingToolbar editor={editor} />}
       {editor && <TableMenu editor={editor} />}
       {editor && (
         <DragHandle
