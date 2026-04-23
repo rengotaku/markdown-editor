@@ -69,10 +69,7 @@ export function TiptapEditor() {
     targetRef: containerRef,
   });
 
-  const dragHandleNested = useMemo(
-    () => ({ edgeDetection: "none" as const }),
-    []
-  );
+  const dragHandleNested = useMemo(() => ({ edgeDetection: "none" as const }), []);
   const dragHandlePosition = useMemo(
     () => ({
       placement: "left-start" as const,
