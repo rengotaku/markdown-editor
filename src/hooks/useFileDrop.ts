@@ -7,8 +7,29 @@ function isMarkdownFile(file: File): boolean {
   return MARKDOWN_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
+function readAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result;
+      if (typeof text === "string") {
+        resolve(text);
+      } else {
+        reject(new Error("ファイルの読み込みに失敗しました。"));
+      }
+    };
+    reader.onerror = () => reject(new Error("ファイルの読み込みに失敗しました。"));
+    reader.readAsText(file);
+  });
+}
+
+export interface DroppedFile {
+  name: string;
+  markdown: string;
+}
+
 interface UseFileDropOptions {
-  onDropMarkdown: (content: string) => void;
+  onDropMarkdown: (files: DroppedFile[]) => void;
   targetRef: React.RefObject<HTMLElement | null>;
 }
 
@@ -53,40 +74,41 @@ export function useFileDrop({
       e.preventDefault();
     };
 
-    const handleDrop = (e: DragEvent) => {
+    const handleDrop = async (e: DragEvent) => {
       e.preventDefault();
       dragCounterRef.current = 0;
       setIsDragging(false);
 
-      const files = e.dataTransfer?.files;
-      if (!files || files.length === 0) return;
+      const fileList = e.dataTransfer?.files;
+      if (!fileList || fileList.length === 0) return;
 
-      if (files.length > 1) {
+      const incoming = Array.from(fileList);
+      const markdownFiles = incoming.filter(isMarkdownFile);
+      const skipped = incoming.filter((f) => !isMarkdownFile(f));
+
+      if (markdownFiles.length === 0) {
         setError(
-          "複数ファイルのドロップには対応していません。1つのファイルをドロップしてください。"
+          "マークダウンファイルが見つかりません。.md または .markdown ファイルをドロップしてください。"
         );
         return;
       }
 
-      const file = files[0];
-      if (!isMarkdownFile(file)) {
-        setError(
-          `「${file.name}」はマークダウンファイルではありません。.md または .markdown ファイルをドロップしてください。`
+      try {
+        const results = await Promise.all(
+          markdownFiles.map(async (file) => ({
+            name: file.name,
+            markdown: await readAsText(file),
+          }))
         );
-        return;
-      }
+        onDropMarkdown(results);
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        const text = reader.result;
-        if (typeof text === "string") {
-          onDropMarkdown(text);
+        if (skipped.length > 0) {
+          const names = skipped.map((f) => `「${f.name}」`).join(", ");
+          setError(`${names} はマークダウンファイルではないためスキップしました。`);
         }
-      };
-      reader.onerror = () => {
+      } catch {
         setError("ファイルの読み込みに失敗しました。");
-      };
-      reader.readAsText(file);
+      }
     };
 
     el.addEventListener("dragenter", handleDragEnter);
