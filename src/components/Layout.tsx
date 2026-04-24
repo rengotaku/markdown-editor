@@ -16,9 +16,9 @@ import Switch from "@mui/material/Switch";
 import DownloadIcon from "@mui/icons-material/Download";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
-import { useEditorInstance } from "@/hooks/useEditorInstance";
-import { useEditorStore, EMPTY_CONTENT } from "@/hooks/useEditorStore";
+import { useOpenFiles } from "@/hooks/useOpenFiles";
 import { useEditorPrefs } from "@/hooks/useEditorPrefs";
+import { Sidebar } from "./Sidebar";
 
 interface LayoutProps {
   children: ReactNode;
@@ -28,61 +28,56 @@ type FeedbackSeverity = "success" | "error" | "info";
 type Feedback = { message: string; severity: FeedbackSeverity } | null;
 
 export function Layout({ children }: LayoutProps) {
-  const editor = useEditorInstance((s) => s.editor);
-  const reset = useEditorStore((s) => s.reset);
+  const files = useOpenFiles((s) => s.files);
+  const activeId = useOpenFiles((s) => s.activeId);
+  const closeAll = useOpenFiles((s) => s.closeAll);
   const centered = useEditorPrefs((s) => s.centered);
   const toggleCentered = useEditorPrefs((s) => s.toggleCentered);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const getMarkdown = useCallback((): string | null => {
-    if (!editor) return null;
-    const storage = editor.storage as { markdown?: { getMarkdown: () => string } };
-    return storage.markdown?.getMarkdown() ?? null;
-  }, [editor]);
+  const activeFile = activeId ? files.find((f) => f.id === activeId) : undefined;
+  const hasActiveFile = Boolean(activeFile);
 
   const handleExport = useCallback(() => {
-    const markdown = getMarkdown();
-    if (markdown === null) {
-      setFeedback({ message: "エディタが初期化されていません", severity: "error" });
+    if (!activeFile) {
+      setFeedback({ message: "アクティブなファイルがありません", severity: "error" });
       return;
     }
-    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const blob = new Blob([activeFile.markdown], {
+      type: "text/markdown;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = buildFilename();
+    a.download = activeFile.name || buildFilename();
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     setFeedback({ message: "Markdown をダウンロードしました", severity: "success" });
-  }, [getMarkdown]);
+  }, [activeFile]);
 
   const handleCopy = useCallback(async () => {
-    const markdown = getMarkdown();
-    if (markdown === null) {
-      setFeedback({ message: "エディタが初期化されていません", severity: "error" });
+    if (!activeFile) {
+      setFeedback({ message: "アクティブなファイルがありません", severity: "error" });
       return;
     }
     try {
-      await navigator.clipboard.writeText(markdown);
+      await navigator.clipboard.writeText(activeFile.markdown);
       setFeedback({ message: "クリップボードにコピーしました", severity: "success" });
     } catch {
       setFeedback({ message: "コピーに失敗しました", severity: "error" });
     }
-  }, [getMarkdown]);
+  }, [activeFile]);
 
   const handleClearConfirm = useCallback(() => {
-    if (editor) {
-      editor.commands.setContent(EMPTY_CONTENT);
-    }
-    reset();
+    closeAll();
     setConfirmOpen(false);
-    setFeedback({ message: "新規状態にしました", severity: "info" });
-  }, [editor, reset]);
+    setFeedback({ message: "すべてのファイルを閉じました", severity: "info" });
+  }, [closeAll]);
 
-  const hasEditor = Boolean(editor);
+  const hasFiles = files.length > 0;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -129,7 +124,7 @@ export function Layout({ children }: LayoutProps) {
                 color="inherit"
                 size="small"
                 onClick={handleCopy}
-                disabled={!hasEditor}
+                disabled={!hasActiveFile}
                 aria-label="copy markdown"
                 sx={{ p: 0.25 }}
               >
@@ -143,7 +138,7 @@ export function Layout({ children }: LayoutProps) {
                 color="inherit"
                 size="small"
                 onClick={handleExport}
-                disabled={!hasEditor}
+                disabled={!hasActiveFile}
                 aria-label="export markdown"
                 sx={{ p: 0.25 }}
               >
@@ -151,14 +146,14 @@ export function Layout({ children }: LayoutProps) {
               </IconButton>
             </span>
           </Tooltip>
-          <Tooltip title="新規作成（編集中の内容はクリアされます）">
+          <Tooltip title="すべてのファイルを閉じる">
             <span>
               <IconButton
                 color="inherit"
                 size="small"
                 onClick={() => setConfirmOpen(true)}
-                disabled={!hasEditor}
-                aria-label="clear editor"
+                disabled={!hasFiles}
+                aria-label="close all files"
                 sx={{ p: 0.25 }}
               >
                 <RestartAltIcon sx={{ fontSize: 16 }} />
@@ -167,21 +162,24 @@ export function Layout({ children }: LayoutProps) {
           </Tooltip>
         </Toolbar>
       </AppBar>
-      <Box component="main" sx={{ flex: 1, overflow: "hidden" }}>
-        {children}
+      <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <Sidebar />
+        <Box component="main" sx={{ flex: 1, overflow: "hidden" }}>
+          {children}
+        </Box>
       </Box>
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <DialogTitle>新規作成</DialogTitle>
+        <DialogTitle>すべて閉じる</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            編集中の内容を破棄して新規状態にします。よろしいですか？
+            開いているすべてのファイルを閉じます。編集内容は破棄されます。よろしいですか？
           </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)}>キャンセル</Button>
           <Button onClick={handleClearConfirm} color="error" variant="contained">
-            クリア
+            閉じる
           </Button>
         </DialogActions>
       </Dialog>
