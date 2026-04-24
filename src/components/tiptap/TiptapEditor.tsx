@@ -2,7 +2,6 @@ import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
 import Snackbar from "@mui/material/Snackbar";
-import Typography from "@mui/material/Typography";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -149,8 +148,6 @@ export function TiptapEditor() {
 
   const cancelOverwrite = () => setPendingConflicts([]);
 
-  const showEmptyState = !activeId;
-
   return (
     <Box
       ref={containerRef}
@@ -163,7 +160,7 @@ export function TiptapEditor() {
       }}
     >
       {editor && <TableMenu editor={editor} />}
-      {editor && activeId && (
+      {editor && (
         <DragHandle
           editor={editor}
           className="drag-handle"
@@ -173,27 +170,7 @@ export function TiptapEditor() {
           <DragIndicatorIcon fontSize="small" />
         </DragHandle>
       )}
-      <Box sx={{ display: activeId ? "block" : "none", height: "100%" }}>
-        <EditorContent editor={editor} />
-      </Box>
-
-      {showEmptyState && (
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            pointerEvents: "none",
-            color: "#999",
-          }}
-        >
-          <Typography variant="body2">
-            マークダウンファイルをここにドロップして開始
-          </Typography>
-        </Box>
-      )}
+      <EditorContent editor={editor} />
 
       {isDragging && (
         <Box

@@ -49,7 +49,9 @@ describe("Sidebar", () => {
 
     await user.click(screen.getByRole("button", { name: "close alpha.md" }));
 
-    expect(useOpenFiles.getState().files).toHaveLength(0);
+    const state = useOpenFiles.getState();
+    expect(state.files).toHaveLength(1);
+    expect(state.files[0].name).toBe("untitled.md");
   });
 
   it("prompts confirmation before closing a dirty file", async () => {
@@ -64,7 +66,9 @@ describe("Sidebar", () => {
     expect(screen.getByText(/編集されています/, { exact: false })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "閉じる" }));
-    expect(useOpenFiles.getState().files).toHaveLength(0);
+    const state = useOpenFiles.getState();
+    expect(state.files).toHaveLength(1);
+    expect(state.files[0].name).toBe("untitled.md");
   });
 
   it("toggles collapsed state via the sidebar button", async () => {

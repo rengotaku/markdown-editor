@@ -22,7 +22,11 @@ interface OpenFilesState {
   setActive: (id: string) => void;
   closeFile: (id: string) => void;
   closeAll: () => void;
+  createUntitled: () => void;
 }
+
+const UNTITLED_BASE = "untitled";
+const UNTITLED_EXT = ".md";
 
 function generateId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -31,9 +35,29 @@ function generateId(): string {
   return `file-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function nextUntitledName(existing: Set<string>): string {
+  const first = `${UNTITLED_BASE}${UNTITLED_EXT}`;
+  if (!existing.has(first)) return first;
+  let n = 2;
+  while (existing.has(`${UNTITLED_BASE}-${n}${UNTITLED_EXT}`)) n++;
+  return `${UNTITLED_BASE}-${n}${UNTITLED_EXT}`;
+}
+
+function buildUntitledFile(existing: Set<string>): OpenFile {
+  return {
+    id: generateId(),
+    name: nextUntitledName(existing),
+    markdown: "",
+    isDirty: false,
+    reloadToken: 0,
+  };
+}
+
+const initialUntitled = buildUntitledFile(new Set());
+
 export const useOpenFiles = create<OpenFilesState>((set) => ({
-  files: [],
-  activeId: null,
+  files: [initialUntitled],
+  activeId: initialUntitled.id,
 
   addFiles: (incoming) =>
     set((state) => {
@@ -89,18 +113,29 @@ export const useOpenFiles = create<OpenFilesState>((set) => ({
     set((state) => {
       const index = state.files.findIndex((file) => file.id === id);
       if (index === -1) return state;
-      const files = state.files.filter((file) => file.id !== id);
+      const remaining = state.files.filter((file) => file.id !== id);
+      if (remaining.length === 0) {
+        const fresh = buildUntitledFile(new Set());
+        return { files: [fresh], activeId: fresh.id };
+      }
       let activeId = state.activeId;
       if (state.activeId === id) {
-        if (files.length === 0) {
-          activeId = null;
-        } else {
-          const nextIndex = Math.min(index, files.length - 1);
-          activeId = files[nextIndex].id;
-        }
+        const nextIndex = Math.min(index, remaining.length - 1);
+        activeId = remaining[nextIndex].id;
       }
-      return { files, activeId };
+      return { files: remaining, activeId };
     }),
 
-  closeAll: () => set({ files: [], activeId: null }),
+  closeAll: () =>
+    set(() => {
+      const fresh = buildUntitledFile(new Set());
+      return { files: [fresh], activeId: fresh.id };
+    }),
+
+  createUntitled: () =>
+    set((state) => {
+      const existing = new Set(state.files.map((f) => f.name));
+      const fresh = buildUntitledFile(existing);
+      return { files: [...state.files, fresh], activeId: fresh.id };
+    }),
 }));

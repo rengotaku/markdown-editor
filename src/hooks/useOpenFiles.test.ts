@@ -6,7 +6,7 @@ describe("useOpenFiles", () => {
     useOpenFiles.setState({ files: [], activeId: null });
   });
 
-  it("starts with no files and no active id", () => {
+  it("starts with no files and no active id when reset", () => {
     const state = useOpenFiles.getState();
     expect(state.files).toEqual([]);
     expect(state.activeId).toBeNull();
@@ -86,13 +86,15 @@ describe("useOpenFiles", () => {
     expect(state.files).toHaveLength(1);
   });
 
-  it("closes the last file and clears active id", () => {
+  it("auto-creates an untitled file when closing the last open file", () => {
     useOpenFiles.getState().addFiles([{ name: "a.md", markdown: "# A" }]);
     const id = useOpenFiles.getState().files[0].id;
     useOpenFiles.getState().closeFile(id);
     const state = useOpenFiles.getState();
-    expect(state.files).toEqual([]);
-    expect(state.activeId).toBeNull();
+    expect(state.files).toHaveLength(1);
+    expect(state.files[0].name).toBe("untitled.md");
+    expect(state.files[0].markdown).toBe("");
+    expect(state.activeId).toBe(state.files[0].id);
   });
 
   it("overwriteFiles replaces markdown by name, resets dirty, bumps reloadToken", () => {
@@ -122,14 +124,33 @@ describe("useOpenFiles", () => {
     expect(state.files[0].markdown).toBe("# A");
   });
 
-  it("closeAll removes all files", () => {
+  it("closeAll replaces all files with a fresh untitled file", () => {
     useOpenFiles.getState().addFiles([
       { name: "a.md", markdown: "# A" },
       { name: "b.md", markdown: "# B" },
     ]);
     useOpenFiles.getState().closeAll();
     const state = useOpenFiles.getState();
-    expect(state.files).toEqual([]);
-    expect(state.activeId).toBeNull();
+    expect(state.files).toHaveLength(1);
+    expect(state.files[0].name).toBe("untitled.md");
+    expect(state.activeId).toBe(state.files[0].id);
+  });
+
+  it("createUntitled appends untitled.md and activates it", () => {
+    useOpenFiles.getState().createUntitled();
+    const state = useOpenFiles.getState();
+    expect(state.files).toHaveLength(1);
+    expect(state.files[0].name).toBe("untitled.md");
+    expect(state.activeId).toBe(state.files[0].id);
+  });
+
+  it("createUntitled increments the suffix when names collide", () => {
+    useOpenFiles.getState().addFiles([
+      { name: "untitled.md", markdown: "" },
+      { name: "untitled-2.md", markdown: "" },
+    ]);
+    useOpenFiles.getState().createUntitled();
+    const names = useOpenFiles.getState().files.map((f) => f.name);
+    expect(names).toEqual(["untitled.md", "untitled-2.md", "untitled-3.md"]);
   });
 });
