@@ -14,6 +14,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import AddIcon from "@mui/icons-material/Add";
 import { useOpenFiles, type OpenFile } from "@/hooks/useOpenFiles";
 import { useSidebarPrefs } from "@/hooks/useSidebarPrefs";
 
@@ -25,6 +26,7 @@ export function Sidebar() {
   const activeId = useOpenFiles((s) => s.activeId);
   const setActive = useOpenFiles((s) => s.setActive);
   const closeFile = useOpenFiles((s) => s.closeFile);
+  const createUntitled = useOpenFiles((s) => s.createUntitled);
   const collapsed = useSidebarPrefs((s) => s.collapsed);
   const toggleCollapsed = useSidebarPrefs((s) => s.toggleCollapsed);
 
@@ -90,20 +92,34 @@ export function Sidebar() {
             開いているファイル
           </Typography>
         )}
-        <Tooltip title={collapsed ? "サイドバーを開く" : "サイドバーを閉じる"}>
-          <IconButton
-            size="small"
-            onClick={toggleCollapsed}
-            aria-label={collapsed ? "expand sidebar" : "collapse sidebar"}
-            sx={{ p: 0.25 }}
-          >
-            {collapsed ? (
-              <ChevronRightIcon sx={{ fontSize: 18 }} />
-            ) : (
-              <ChevronLeftIcon sx={{ fontSize: 18 }} />
-            )}
-          </IconButton>
-        </Tooltip>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.25 }}>
+          {!collapsed && (
+            <Tooltip title="新規ファイル">
+              <IconButton
+                size="small"
+                onClick={createUntitled}
+                aria-label="new untitled file"
+                sx={{ p: 0.25 }}
+              >
+                <AddIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title={collapsed ? "サイドバーを開く" : "サイドバーを閉じる"}>
+            <IconButton
+              size="small"
+              onClick={toggleCollapsed}
+              aria-label={collapsed ? "expand sidebar" : "collapse sidebar"}
+              sx={{ p: 0.25 }}
+            >
+              {collapsed ? (
+                <ChevronRightIcon sx={{ fontSize: 18 }} />
+              ) : (
+                <ChevronLeftIcon sx={{ fontSize: 18 }} />
+              )}
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       {!collapsed && (

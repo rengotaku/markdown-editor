@@ -11,6 +11,7 @@ vi.mock("@/components/tiptap/TiptapEditor", () => ({
 
 describe("Layout header buttons", () => {
   beforeEach(() => {
+    localStorage.clear();
     useOpenFiles.setState({ files: [], activeId: null });
     useSidebarPrefs.setState({ collapsed: true });
   });

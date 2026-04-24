@@ -3,6 +3,7 @@ import { useOpenFiles } from "./useOpenFiles";
 
 describe("useOpenFiles", () => {
   beforeEach(() => {
+    localStorage.clear();
     useOpenFiles.setState({ files: [], activeId: null });
   });
 
