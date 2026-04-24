@@ -46,7 +46,6 @@ export function TiptapEditor() {
     const file = s.files.find((f) => f.id === s.activeId);
     return file ? file.reloadToken : 0;
   });
-  const hasFiles = useOpenFiles((s) => s.files.length > 0);
   const addFiles = useOpenFiles((s) => s.addFiles);
   const overwriteFiles = useOpenFiles((s) => s.overwriteFiles);
   const updateActiveMarkdown = useOpenFiles((s) => s.updateActiveMarkdown);
@@ -135,12 +134,11 @@ export function TiptapEditor() {
     const key = activeId ? `${activeId}:${activeReloadToken}` : null;
     if (lastLoadedKeyRef.current === key) return;
     lastLoadedKeyRef.current = key;
+    if (!activeId) return;
     const state = useOpenFiles.getState();
     const file = state.files.find((f) => f.id === state.activeId);
     if (file) {
       editor.commands.setContent(file.markdown);
-    } else {
-      editor.commands.clearContent();
     }
   }, [editor, activeId, activeReloadToken]);
 
@@ -151,7 +149,7 @@ export function TiptapEditor() {
 
   const cancelOverwrite = () => setPendingConflicts([]);
 
-  const showEmptyState = !activeId && !hasFiles;
+  const showEmptyState = !activeId;
 
   return (
     <Box
@@ -175,7 +173,9 @@ export function TiptapEditor() {
           <DragIndicatorIcon fontSize="small" />
         </DragHandle>
       )}
-      <EditorContent editor={editor} />
+      <Box sx={{ display: activeId ? "block" : "none", height: "100%" }}>
+        <EditorContent editor={editor} />
+      </Box>
 
       {showEmptyState && (
         <Box
