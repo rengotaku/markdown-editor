@@ -7,6 +7,7 @@ import { useSidebarPrefs } from "@/hooks/useSidebarPrefs";
 
 describe("Sidebar", () => {
   beforeEach(() => {
+    localStorage.clear();
     useOpenFiles.setState({ files: [], activeId: null });
     useSidebarPrefs.setState({ collapsed: false });
   });
@@ -49,7 +50,9 @@ describe("Sidebar", () => {
 
     await user.click(screen.getByRole("button", { name: "close alpha.md" }));
 
-    expect(useOpenFiles.getState().files).toHaveLength(0);
+    const state = useOpenFiles.getState();
+    expect(state.files).toHaveLength(1);
+    expect(state.files[0].name).toBe("untitled.md");
   });
 
   it("prompts confirmation before closing a dirty file", async () => {
@@ -64,7 +67,19 @@ describe("Sidebar", () => {
     expect(screen.getByText(/編集されています/, { exact: false })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "閉じる" }));
-    expect(useOpenFiles.getState().files).toHaveLength(0);
+    const state = useOpenFiles.getState();
+    expect(state.files).toHaveLength(1);
+    expect(state.files[0].name).toBe("untitled.md");
+  });
+
+  it("creates a new untitled file when the + button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<Sidebar />);
+    await user.click(screen.getByRole("button", { name: "new untitled file" }));
+    const state = useOpenFiles.getState();
+    expect(state.files).toHaveLength(1);
+    expect(state.files[0].name).toBe("untitled.md");
+    expect(state.activeId).toBe(state.files[0].id);
   });
 
   it("toggles collapsed state via the sidebar button", async () => {

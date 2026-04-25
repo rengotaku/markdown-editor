@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 
 export interface OpenFile {
   id: string;
@@ -22,7 +23,12 @@ interface OpenFilesState {
   setActive: (id: string) => void;
   closeFile: (id: string) => void;
   closeAll: () => void;
+  createUntitled: () => void;
 }
+
+const UNTITLED_BASE = "untitled";
+const UNTITLED_EXT = ".md";
+const STORAGE_KEY = "markdown-editor-open-files";
 
 function generateId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -31,76 +37,155 @@ function generateId(): string {
   return `file-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-export const useOpenFiles = create<OpenFilesState>((set) => ({
-  files: [],
-  activeId: null,
+function nextUntitledName(existing: Set<string>): string {
+  const first = `${UNTITLED_BASE}${UNTITLED_EXT}`;
+  if (!existing.has(first)) return first;
+  let n = 2;
+  while (existing.has(`${UNTITLED_BASE}-${n}${UNTITLED_EXT}`)) n++;
+  return `${UNTITLED_BASE}-${n}${UNTITLED_EXT}`;
+}
 
-  addFiles: (incoming) =>
-    set((state) => {
-      if (incoming.length === 0) return state;
-      const created: OpenFile[] = incoming.map((item) => ({
-        id: generateId(),
-        name: item.name,
-        markdown: item.markdown,
-        isDirty: false,
-        reloadToken: 0,
-      }));
-      const files = [...state.files, ...created];
-      const activeId = state.activeId ?? created[0].id;
-      return { files, activeId };
+function buildUntitledFile(existing: Set<string>): OpenFile {
+  return {
+    id: generateId(),
+    name: nextUntitledName(existing),
+    markdown: "",
+    isDirty: false,
+    reloadToken: 0,
+  };
+}
+
+const safeLocalStorage: StateStorage = {
+  getItem: (name) => {
+    try {
+      return localStorage.getItem(name);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name, value) => {
+    try {
+      localStorage.setItem(name, value);
+    } catch (error) {
+      console.warn(`[useOpenFiles] Failed to persist '${name}':`, error);
+    }
+  },
+  removeItem: (name) => {
+    try {
+      localStorage.removeItem(name);
+    } catch {
+      // noop
+    }
+  },
+};
+
+const initialUntitled = buildUntitledFile(new Set());
+
+export const useOpenFiles = create<OpenFilesState>()(
+  persist(
+    (set) => ({
+      files: [initialUntitled],
+      activeId: initialUntitled.id,
+
+      addFiles: (incoming) =>
+        set((state) => {
+          if (incoming.length === 0) return state;
+          const created: OpenFile[] = incoming.map((item) => ({
+            id: generateId(),
+            name: item.name,
+            markdown: item.markdown,
+            isDirty: false,
+            reloadToken: 0,
+          }));
+          const files = [...state.files, ...created];
+          const activeId = state.activeId ?? created[0].id;
+          return { files, activeId };
+        }),
+
+      overwriteFiles: (incoming) =>
+        set((state) => {
+          if (incoming.length === 0) return state;
+          const byName = new Map(incoming.map((item) => [item.name, item.markdown]));
+          const files = state.files.map((file) => {
+            const markdown = byName.get(file.name);
+            if (markdown === undefined) return file;
+            return {
+              ...file,
+              markdown,
+              isDirty: false,
+              reloadToken: file.reloadToken + 1,
+            };
+          });
+          return { files };
+        }),
+
+      updateActiveMarkdown: (markdown) =>
+        set((state) => {
+          if (!state.activeId) return state;
+          const files = state.files.map((file) =>
+            file.id === state.activeId
+              ? { ...file, markdown, isDirty: file.isDirty || file.markdown !== markdown }
+              : file
+          );
+          return { files };
+        }),
+
+      setActive: (id) =>
+        set((state) => {
+          if (!state.files.some((file) => file.id === id)) return state;
+          if (state.activeId === id) return state;
+          return { activeId: id };
+        }),
+
+      closeFile: (id) =>
+        set((state) => {
+          const index = state.files.findIndex((file) => file.id === id);
+          if (index === -1) return state;
+          const remaining = state.files.filter((file) => file.id !== id);
+          if (remaining.length === 0) {
+            const fresh = buildUntitledFile(new Set());
+            return { files: [fresh], activeId: fresh.id };
+          }
+          let activeId = state.activeId;
+          if (state.activeId === id) {
+            const nextIndex = Math.min(index, remaining.length - 1);
+            activeId = remaining[nextIndex].id;
+          }
+          return { files: remaining, activeId };
+        }),
+
+      closeAll: () =>
+        set(() => {
+          const fresh = buildUntitledFile(new Set());
+          return { files: [fresh], activeId: fresh.id };
+        }),
+
+      createUntitled: () =>
+        set((state) => {
+          const existing = new Set(state.files.map((f) => f.name));
+          const fresh = buildUntitledFile(existing);
+          return { files: [...state.files, fresh], activeId: fresh.id };
+        }),
     }),
-
-  overwriteFiles: (incoming) =>
-    set((state) => {
-      if (incoming.length === 0) return state;
-      const byName = new Map(incoming.map((item) => [item.name, item.markdown]));
-      const files = state.files.map((file) => {
-        const markdown = byName.get(file.name);
-        if (markdown === undefined) return file;
-        return {
-          ...file,
-          markdown,
-          isDirty: false,
-          reloadToken: file.reloadToken + 1,
-        };
-      });
-      return { files };
-    }),
-
-  updateActiveMarkdown: (markdown) =>
-    set((state) => {
-      if (!state.activeId) return state;
-      const files = state.files.map((file) =>
-        file.id === state.activeId
-          ? { ...file, markdown, isDirty: file.isDirty || file.markdown !== markdown }
-          : file
-      );
-      return { files };
-    }),
-
-  setActive: (id) =>
-    set((state) => {
-      if (!state.files.some((file) => file.id === id)) return state;
-      if (state.activeId === id) return state;
-      return { activeId: id };
-    }),
-
-  closeFile: (id) =>
-    set((state) => {
-      const index = state.files.findIndex((file) => file.id === id);
-      if (index === -1) return state;
-      const files = state.files.filter((file) => file.id !== id);
-      let activeId = state.activeId;
-      if (state.activeId === id) {
-        if (files.length === 0) {
-          activeId = null;
-        } else {
-          const nextIndex = Math.min(index, files.length - 1);
-          activeId = files[nextIndex].id;
+    {
+      name: STORAGE_KEY,
+      storage: createJSONStorage(() => safeLocalStorage),
+      partialize: (state) => ({
+        files: state.files,
+        activeId: state.activeId,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        if (state.files.length === 0) {
+          const fresh = buildUntitledFile(new Set());
+          state.files = [fresh];
+          state.activeId = fresh.id;
+          return;
         }
-      }
-      return { files, activeId };
-    }),
-
-  closeAll: () => set({ files: [], activeId: null }),
-}));
+        if (!state.activeId || !state.files.some((f) => f.id === state.activeId)) {
+          state.activeId = state.files[0].id;
+        }
+      },
+    }
+  )
+);
