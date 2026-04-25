@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const MARKDOWN_EXTENSIONS = [".md", ".markdown", ".mdown", ".mkd", ".mkdn"];
 
@@ -30,24 +30,21 @@ export interface DroppedFile {
 
 interface UseFileDropOptions {
   onDropMarkdown: (files: DroppedFile[]) => void;
+  onError?: (message: string) => void;
   targetRef: React.RefObject<HTMLElement | null>;
 }
 
 interface UseFileDropResult {
   isDragging: boolean;
-  error: string | null;
-  clearError: () => void;
 }
 
 export function useFileDrop({
   onDropMarkdown,
+  onError,
   targetRef,
 }: UseFileDropOptions): UseFileDropResult {
   const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const dragCounterRef = useRef(0);
-
-  const clearError = useCallback(() => setError(null), []);
 
   useEffect(() => {
     const el = targetRef.current;
@@ -58,7 +55,6 @@ export function useFileDrop({
       dragCounterRef.current++;
       if (dragCounterRef.current === 1) {
         setIsDragging(true);
-        setError(null);
       }
     };
 
@@ -87,7 +83,7 @@ export function useFileDrop({
       const skipped = incoming.filter((f) => !isMarkdownFile(f));
 
       if (markdownFiles.length === 0) {
-        setError(
+        onError?.(
           "マークダウンファイルが見つかりません。.md または .markdown ファイルをドロップしてください。"
         );
         return;
@@ -104,10 +100,10 @@ export function useFileDrop({
 
         if (skipped.length > 0) {
           const names = skipped.map((f) => `「${f.name}」`).join(", ");
-          setError(`${names} はマークダウンファイルではないためスキップしました。`);
+          onError?.(`${names} はマークダウンファイルではないためスキップしました。`);
         }
       } catch {
-        setError("ファイルの読み込みに失敗しました。");
+        onError?.("ファイルの読み込みに失敗しました。");
       }
     };
 
@@ -122,7 +118,7 @@ export function useFileDrop({
       el.removeEventListener("dragover", handleDragOver);
       el.removeEventListener("drop", handleDrop);
     };
-  }, [targetRef, onDropMarkdown]);
+  }, [targetRef, onDropMarkdown, onError]);
 
-  return { isDragging, error, clearError };
+  return { isDragging };
 }

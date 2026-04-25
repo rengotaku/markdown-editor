@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useCallback, useRef, type ReactNode } from "react";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Box from "@mui/material/Box";
@@ -16,8 +16,9 @@ import Switch from "@mui/material/Switch";
 import DownloadIcon from "@mui/icons-material/Download";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
-import { useOpenFiles } from "@/hooks/useOpenFiles";
+import { useOpenFiles, type IncomingFile } from "@/hooks/useOpenFiles";
 import { useEditorPrefs } from "@/hooks/useEditorPrefs";
+import { useFileDrop, type DroppedFile } from "@/hooks/useFileDrop";
 import { Sidebar } from "./Sidebar";
 
 interface LayoutProps {
@@ -31,10 +32,14 @@ export function Layout({ children }: LayoutProps) {
   const files = useOpenFiles((s) => s.files);
   const activeId = useOpenFiles((s) => s.activeId);
   const closeAll = useOpenFiles((s) => s.closeAll);
+  const addFiles = useOpenFiles((s) => s.addFiles);
+  const overwriteFiles = useOpenFiles((s) => s.overwriteFiles);
   const centered = useEditorPrefs((s) => s.centered);
   const toggleCentered = useEditorPrefs((s) => s.toggleCentered);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingConflicts, setPendingConflicts] = useState<IncomingFile[]>([]);
+  const dropTargetRef = useRef<HTMLDivElement>(null);
 
   const activeFile = activeId ? files.find((f) => f.id === activeId) : undefined;
   const hasActiveFile = Boolean(activeFile);
@@ -77,10 +82,52 @@ export function Layout({ children }: LayoutProps) {
     setFeedback({ message: "すべてのファイルを閉じました", severity: "info" });
   }, [closeAll]);
 
+  const handleDropMarkdown = useCallback(
+    (dropped: DroppedFile[]) => {
+      const existingNames = new Set(useOpenFiles.getState().files.map((f) => f.name));
+      const seen = new Set<string>();
+      const conflicts: IncomingFile[] = [];
+      const fresh: IncomingFile[] = [];
+      for (const file of dropped) {
+        if (existingNames.has(file.name) || seen.has(file.name)) {
+          conflicts.push(file);
+        } else {
+          fresh.push(file);
+          seen.add(file.name);
+        }
+      }
+      if (fresh.length > 0) addFiles(fresh);
+      if (conflicts.length > 0) {
+        setPendingConflicts((prev) => mergeByName(prev, conflicts));
+      }
+    },
+    [addFiles]
+  );
+
+  const handleDropError = useCallback(
+    (message: string) => setFeedback({ message, severity: "error" }),
+    []
+  );
+
+  const { isDragging } = useFileDrop({
+    onDropMarkdown: handleDropMarkdown,
+    onError: handleDropError,
+    targetRef: dropTargetRef,
+  });
+
+  const confirmOverwrite = () => {
+    overwriteFiles(pendingConflicts);
+    setPendingConflicts([]);
+  };
+  const cancelOverwrite = () => setPendingConflicts([]);
+
   const hasFiles = files.length > 0;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+    <Box
+      ref={dropTargetRef}
+      sx={{ display: "flex", flexDirection: "column", height: "100vh" }}
+    >
       <AppBar
         position="sticky"
         elevation={0}
@@ -162,11 +209,50 @@ export function Layout({ children }: LayoutProps) {
           </Tooltip>
         </Toolbar>
       </AppBar>
-      <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
         <Sidebar />
         <Box component="main" sx={{ flex: 1, overflow: "hidden" }}>
           {children}
         </Box>
+
+        {isDragging && (
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              bgcolor: "rgba(25, 118, 210, 0.08)",
+              border: "2px dashed",
+              borderColor: "primary.main",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1300,
+              pointerEvents: "none",
+            }}
+          >
+            <Box
+              sx={{
+                bgcolor: "background.paper",
+                px: 3,
+                py: 1.5,
+                borderRadius: 1,
+                boxShadow: 1,
+                color: "primary.main",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+              }}
+            >
+              マークダウンファイルをドロップして読み込み
+            </Box>
+          </Box>
+        )}
       </Box>
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
@@ -180,6 +266,35 @@ export function Layout({ children }: LayoutProps) {
           <Button onClick={() => setConfirmOpen(false)}>キャンセル</Button>
           <Button onClick={handleClearConfirm} color="error" variant="contained">
             閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={pendingConflicts.length > 0} onClose={cancelOverwrite}>
+        <DialogTitle>同一ファイルがあります</DialogTitle>
+        <DialogContent>
+          <DialogContentText component="div">
+            以下のファイルはすでに開いています。上書きしますか？
+            <Box
+              component="ul"
+              sx={{
+                mt: 1,
+                mb: 0,
+                pl: 2,
+                fontFamily: "monospace",
+                fontSize: "0.875rem",
+              }}
+            >
+              {pendingConflicts.map((c) => (
+                <li key={c.name}>{c.name}</li>
+              ))}
+            </Box>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelOverwrite}>キャンセル</Button>
+          <Button onClick={confirmOverwrite} color="primary" variant="contained">
+            上書き
           </Button>
         </DialogActions>
       </Dialog>
@@ -203,6 +318,13 @@ export function Layout({ children }: LayoutProps) {
       </Snackbar>
     </Box>
   );
+}
+
+function mergeByName(prev: IncomingFile[], next: IncomingFile[]): IncomingFile[] {
+  const map = new Map<string, IncomingFile>();
+  for (const item of prev) map.set(item.name, item);
+  for (const item of next) map.set(item.name, item);
+  return Array.from(map.values());
 }
 
 function buildFilename(): string {
