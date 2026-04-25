@@ -154,4 +154,44 @@ describe("useOpenFiles", () => {
     const names = useOpenFiles.getState().files.map((f) => f.name);
     expect(names).toEqual(["untitled.md", "untitled-2.md", "untitled-3.md"]);
   });
+
+  it("renameFile updates the name and trims whitespace", () => {
+    useOpenFiles.getState().addFiles([{ name: "a.md", markdown: "# A" }]);
+    const id = useOpenFiles.getState().files[0].id;
+    const result = useOpenFiles.getState().renameFile(id, "  renamed.md  ");
+    expect(result).toEqual({ ok: true });
+    expect(useOpenFiles.getState().files[0].name).toBe("renamed.md");
+  });
+
+  it("renameFile rejects empty names", () => {
+    useOpenFiles.getState().addFiles([{ name: "a.md", markdown: "# A" }]);
+    const id = useOpenFiles.getState().files[0].id;
+    const result = useOpenFiles.getState().renameFile(id, "   ");
+    expect(result).toEqual({ ok: false, reason: "empty" });
+    expect(useOpenFiles.getState().files[0].name).toBe("a.md");
+  });
+
+  it("renameFile rejects duplicate names", () => {
+    useOpenFiles.getState().addFiles([
+      { name: "a.md", markdown: "# A" },
+      { name: "b.md", markdown: "# B" },
+    ]);
+    const aId = useOpenFiles.getState().files[0].id;
+    const result = useOpenFiles.getState().renameFile(aId, "b.md");
+    expect(result).toEqual({ ok: false, reason: "duplicate" });
+    expect(useOpenFiles.getState().files[0].name).toBe("a.md");
+  });
+
+  it("renameFile is a no-op when name is unchanged", () => {
+    useOpenFiles.getState().addFiles([{ name: "a.md", markdown: "# A" }]);
+    const id = useOpenFiles.getState().files[0].id;
+    const result = useOpenFiles.getState().renameFile(id, "a.md");
+    expect(result).toEqual({ ok: true });
+    expect(useOpenFiles.getState().files[0].name).toBe("a.md");
+  });
+
+  it("renameFile returns not-found for unknown id", () => {
+    const result = useOpenFiles.getState().renameFile("nonexistent", "x.md");
+    expect(result).toEqual({ ok: false, reason: "not-found" });
+  });
 });

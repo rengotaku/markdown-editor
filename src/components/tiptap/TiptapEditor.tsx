@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import Box from "@mui/material/Box";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -37,7 +37,6 @@ export function TiptapEditor() {
     return file ? file.reloadToken : 0;
   });
   const updateActiveMarkdown = useOpenFiles((s) => s.updateActiveMarkdown);
-  const lastLoadedKeyRef = useRef<string | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -86,11 +85,7 @@ export function TiptapEditor() {
   }, [editor]);
 
   useEffect(() => {
-    if (!editor) return;
-    const key = activeId ? `${activeId}:${activeReloadToken}` : null;
-    if (lastLoadedKeyRef.current === key) return;
-    lastLoadedKeyRef.current = key;
-    if (!activeId) return;
+    if (!editor || !activeId) return;
     const state = useOpenFiles.getState();
     const file = state.files.find((f) => f.id === state.activeId);
     if (file) {

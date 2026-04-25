@@ -14,6 +14,10 @@ export interface IncomingFile {
   markdown: string;
 }
 
+export type RenameResult =
+  | { ok: true }
+  | { ok: false; reason: "empty" | "duplicate" | "not-found" };
+
 interface OpenFilesState {
   files: OpenFile[];
   activeId: string | null;
@@ -24,6 +28,7 @@ interface OpenFilesState {
   closeFile: (id: string) => void;
   closeAll: () => void;
   createUntitled: () => void;
+  renameFile: (id: string, name: string) => RenameResult;
 }
 
 const UNTITLED_BASE = "untitled";
@@ -83,7 +88,7 @@ const initialUntitled = buildUntitledFile(new Set());
 
 export const useOpenFiles = create<OpenFilesState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       files: [initialUntitled],
       activeId: initialUntitled.id,
 
@@ -166,6 +171,24 @@ export const useOpenFiles = create<OpenFilesState>()(
           const fresh = buildUntitledFile(existing);
           return { files: [...state.files, fresh], activeId: fresh.id };
         }),
+
+      renameFile: (id, name) => {
+        const trimmed = name.trim();
+        if (trimmed.length === 0) return { ok: false, reason: "empty" };
+        const state = get();
+        const target = state.files.find((f) => f.id === id);
+        if (!target) return { ok: false, reason: "not-found" };
+        if (target.name === trimmed) return { ok: true };
+        if (state.files.some((f) => f.id !== id && f.name === trimmed)) {
+          return { ok: false, reason: "duplicate" };
+        }
+        set({
+          files: state.files.map((f) =>
+            f.id === id ? { ...f, name: trimmed } : f
+          ),
+        });
+        return { ok: true };
+      },
     }),
     {
       name: STORAGE_KEY,

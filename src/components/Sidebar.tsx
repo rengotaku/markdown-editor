@@ -9,17 +9,28 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import TextField from "@mui/material/TextField";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 import CloseIcon from "@mui/icons-material/Close";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import AddIcon from "@mui/icons-material/Add";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
 import { useOpenFiles, type OpenFile } from "@/hooks/useOpenFiles";
 import { useSidebarPrefs } from "@/hooks/useSidebarPrefs";
 
 const SIDEBAR_WIDTH = 240;
 const SIDEBAR_COLLAPSED_WIDTH = 36;
+
+type SnackbarFeedback = { message: string; severity: "success" | "error" } | null;
 
 export function Sidebar() {
   const files = useOpenFiles((s) => s.files);
@@ -27,10 +38,22 @@ export function Sidebar() {
   const setActive = useOpenFiles((s) => s.setActive);
   const closeFile = useOpenFiles((s) => s.closeFile);
   const createUntitled = useOpenFiles((s) => s.createUntitled);
+  const renameFile = useOpenFiles((s) => s.renameFile);
   const collapsed = useSidebarPrefs((s) => s.collapsed);
   const toggleCollapsed = useSidebarPrefs((s) => s.toggleCollapsed);
 
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    fileId: string;
+    anchorPosition: { top: number; left: number };
+  } | null>(null);
+  const [renameTarget, setRenameTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [renameInput, setRenameInput] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<SnackbarFeedback>(null);
 
   const pendingCloseFile = pendingCloseId
     ? files.find((f) => f.id === pendingCloseId)
@@ -49,6 +72,61 @@ export function Sidebar() {
       closeFile(pendingCloseId);
       setPendingCloseId(null);
     }
+  };
+
+  const openContextMenu = (file: OpenFile, position: { x: number; y: number }) => {
+    setContextMenu({
+      fileId: file.id,
+      anchorPosition: { top: position.y, left: position.x },
+    });
+  };
+
+  const closeContextMenu = () => setContextMenu(null);
+
+  const contextMenuFile = contextMenu
+    ? files.find((f) => f.id === contextMenu.fileId)
+    : null;
+
+  const handleCopyName = async () => {
+    if (!contextMenuFile) return;
+    const name = contextMenuFile.name;
+    closeContextMenu();
+    try {
+      await navigator.clipboard.writeText(name);
+      setFeedback({ message: "ファイル名をコピーしました", severity: "success" });
+    } catch {
+      setFeedback({ message: "コピーに失敗しました", severity: "error" });
+    }
+  };
+
+  const handleStartRename = () => {
+    if (!contextMenuFile) return;
+    setRenameTarget({ id: contextMenuFile.id, name: contextMenuFile.name });
+    setRenameInput(contextMenuFile.name);
+    setRenameError(null);
+    closeContextMenu();
+  };
+
+  const cancelRename = () => {
+    setRenameTarget(null);
+    setRenameInput("");
+    setRenameError(null);
+  };
+
+  const submitRename = () => {
+    if (!renameTarget) return;
+    const result = renameFile(renameTarget.id, renameInput);
+    if (result.ok) {
+      cancelRename();
+      return;
+    }
+    setRenameError(
+      result.reason === "empty"
+        ? "ファイル名を入力してください"
+        : result.reason === "duplicate"
+          ? "同じ名前のファイルがすでに開いています"
+          : "ファイルが見つかりません"
+    );
   };
 
   const width = collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH;
@@ -139,6 +217,7 @@ export function Sidebar() {
                   active={file.id === activeId}
                   onActivate={() => setActive(file.id)}
                   onClose={() => requestClose(file)}
+                  onContextMenu={(pos) => openContextMenu(file, pos)}
                 />
               ))}
             </Box>
@@ -162,6 +241,77 @@ export function Sidebar() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Menu
+        open={contextMenu !== null}
+        onClose={closeContextMenu}
+        anchorReference="anchorPosition"
+        anchorPosition={contextMenu?.anchorPosition}
+        slotProps={{ list: { dense: true } }}
+      >
+        <MenuItem onClick={handleCopyName}>
+          <ListItemIcon>
+            <ContentCopyIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>ファイル名をコピー</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={handleStartRename}>
+          <ListItemIcon>
+            <DriveFileRenameOutlineIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>ファイル名を変更</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      <Dialog open={renameTarget !== null} onClose={cancelRename} fullWidth maxWidth="xs">
+        <DialogTitle>ファイル名を変更</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            margin="dense"
+            label="ファイル名"
+            value={renameInput}
+            onChange={(e) => {
+              setRenameInput(e.target.value);
+              if (renameError) setRenameError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitRename();
+              }
+            }}
+            error={renameError !== null}
+            helperText={renameError ?? " "}
+            inputProps={{ "aria-label": "rename file" }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelRename}>キャンセル</Button>
+          <Button onClick={submitRename} variant="contained">
+            変更
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={Boolean(feedback)}
+        autoHideDuration={2000}
+        onClose={() => setFeedback(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        {feedback ? (
+          <Alert
+            onClose={() => setFeedback(null)}
+            severity={feedback.severity}
+            variant="filled"
+            sx={{ width: "100%" }}
+          >
+            {feedback.message}
+          </Alert>
+        ) : undefined}
+      </Snackbar>
     </Box>
   );
 }
@@ -171,12 +321,18 @@ interface FileRowProps {
   active: boolean;
   onActivate: () => void;
   onClose: () => void;
+  onContextMenu: (position: { x: number; y: number }) => void;
 }
 
-function FileRow({ file, active, onActivate, onClose }: FileRowProps) {
+function FileRow({ file, active, onActivate, onClose, onContextMenu }: FileRowProps) {
   const handleCloseClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onClose();
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onContextMenu({ x: e.clientX, y: e.clientY });
   };
 
   return (
@@ -186,6 +342,7 @@ function FileRow({ file, active, onActivate, onClose }: FileRowProps) {
       tabIndex={0}
       aria-selected={active}
       onClick={onActivate}
+      onContextMenu={handleContextMenu}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();

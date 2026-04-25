@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Sidebar } from "./Sidebar";
 import { useOpenFiles } from "@/hooks/useOpenFiles";
 import { useSidebarPrefs } from "@/hooks/useSidebarPrefs";
@@ -89,5 +89,62 @@ describe("Sidebar", () => {
     expect(useSidebarPrefs.getState().collapsed).toBe(true);
     await user.click(screen.getByRole("button", { name: "expand sidebar" }));
     expect(useSidebarPrefs.getState().collapsed).toBe(false);
+  });
+
+  it("copies the file name via context menu", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    useOpenFiles.getState().addFiles([{ name: "alpha.md", markdown: "# A" }]);
+    render(<Sidebar />);
+
+    fireEvent.contextMenu(screen.getByText("alpha.md"));
+    await user.click(screen.getByText("ファイル名をコピー"));
+
+    expect(writeText).toHaveBeenCalledWith("alpha.md");
+    expect(
+      await screen.findByText("ファイル名をコピーしました")
+    ).toBeInTheDocument();
+  });
+
+  it("renames a file via the context menu dialog", async () => {
+    const user = userEvent.setup();
+    useOpenFiles.getState().addFiles([{ name: "alpha.md", markdown: "# A" }]);
+    render(<Sidebar />);
+
+    fireEvent.contextMenu(screen.getByText("alpha.md"));
+    await user.click(screen.getByText("ファイル名を変更"));
+
+    const input = screen.getByLabelText("rename file") as HTMLInputElement;
+    await user.clear(input);
+    await user.type(input, "renamed.md");
+    await user.click(screen.getByRole("button", { name: "変更" }));
+
+    expect(useOpenFiles.getState().files[0].name).toBe("renamed.md");
+  });
+
+  it("shows an error when renaming to a duplicate name", async () => {
+    const user = userEvent.setup();
+    useOpenFiles.getState().addFiles([
+      { name: "alpha.md", markdown: "# A" },
+      { name: "beta.md", markdown: "# B" },
+    ]);
+    render(<Sidebar />);
+
+    fireEvent.contextMenu(screen.getByText("alpha.md"));
+    await user.click(screen.getByText("ファイル名を変更"));
+
+    const input = screen.getByLabelText("rename file") as HTMLInputElement;
+    await user.clear(input);
+    await user.type(input, "beta.md");
+    await user.click(screen.getByRole("button", { name: "変更" }));
+
+    expect(
+      screen.getByText("同じ名前のファイルがすでに開いています")
+    ).toBeInTheDocument();
+    expect(useOpenFiles.getState().files[0].name).toBe("alpha.md");
   });
 });
