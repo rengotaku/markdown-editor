@@ -1,16 +1,20 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
+import { simpleHash } from "@/utils/hash";
 
 export interface OpenFile {
   id: string;
   name: string;
+  path: string;
   markdown: string;
   isDirty: boolean;
   reloadToken: number;
+  initialHash: string;
 }
 
 export interface IncomingFile {
   name: string;
+  path?: string;
   markdown: string;
 }
 
@@ -46,12 +50,15 @@ function nextUntitledName(existing: Set<string>): string {
 }
 
 function buildUntitledFile(existing: Set<string>): OpenFile {
+  const name = nextUntitledName(existing);
   return {
     id: generateId(),
-    name: nextUntitledName(existing),
+    name,
+    path: name,
     markdown: "",
     isDirty: false,
     reloadToken: 0,
+    initialHash: simpleHash(""),
   };
 }
 
@@ -93,9 +100,11 @@ export const useOpenFiles = create<OpenFilesState>()(
           const created: OpenFile[] = incoming.map((item) => ({
             id: generateId(),
             name: item.name,
+            path: item.path ?? item.name,
             markdown: item.markdown,
             isDirty: false,
             reloadToken: 0,
+            initialHash: simpleHash(item.markdown),
           }));
           const files = [...state.files, ...created];
           return { files, activeId: created[0].id };
@@ -185,6 +194,10 @@ export const useOpenFiles = create<OpenFilesState>()(
           state.activeId = fresh.id;
           return;
         }
+        state.files = state.files.map((f) => ({
+          ...(f.path ? f : { ...f, path: f.name }),
+          initialHash: f.initialHash ?? simpleHash(f.markdown),
+        }));
         if (!state.activeId || !state.files.some((f) => f.id === state.activeId)) {
           state.activeId = state.files[0].id;
         }

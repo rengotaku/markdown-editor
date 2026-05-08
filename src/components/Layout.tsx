@@ -20,6 +20,7 @@ import { useOpenFiles, type IncomingFile } from "@/hooks/useOpenFiles";
 import { useEditorInstance } from "@/hooks/useEditorInstance";
 import { useEditorPrefs } from "@/hooks/useEditorPrefs";
 import { useFileDrop, type DroppedFile } from "@/hooks/useFileDrop";
+import { simpleHash, buildFixFilename } from "@/utils/hash";
 import { Sidebar } from "./Sidebar";
 
 interface LayoutProps {
@@ -57,7 +58,9 @@ export function Layout({ children }: LayoutProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = activeFile.name || buildFilename();
+    const isModified = simpleHash(activeFile.markdown) !== activeFile.initialHash;
+    const baseName = activeFile.name || buildFilename();
+    a.download = isModified ? buildFixFilename(baseName) : baseName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -86,24 +89,44 @@ export function Layout({ children }: LayoutProps) {
 
   const handleDropMarkdown = useCallback(
     (dropped: DroppedFile[]) => {
-      const existingNames = new Set(useOpenFiles.getState().files.map((f) => f.name));
-      const seen = new Set<string>();
-      const conflicts: IncomingFile[] = [];
+      const existingFiles = useOpenFiles.getState().files;
+      const seenPaths = new Set<string>();
+      const samePathConflicts: IncomingFile[] = [];
       const fresh: IncomingFile[] = [];
+      const diffPathSameNames: string[] = [];
+
       for (const file of dropped) {
-        if (existingNames.has(file.name) || seen.has(file.name)) {
-          conflicts.push(file);
+        const filePath = file.path;
+        const samePathExisting = existingFiles.find(
+          (f) => f.name === file.name && (f.path ?? f.name) === filePath
+        );
+
+        if (samePathExisting || seenPaths.has(filePath)) {
+          samePathConflicts.push(file);
         } else {
+          const diffPathExists = existingFiles.some(
+            (f) => f.name === file.name && (f.path ?? f.name) !== filePath
+          );
           fresh.push(file);
-          seen.add(file.name);
+          seenPaths.add(filePath);
+          if (diffPathExists) {
+            diffPathSameNames.push(file.name);
+          }
         }
       }
+
       if (fresh.length > 0) {
         addFiles(fresh);
         requestScrollToTop();
       }
-      if (conflicts.length > 0) {
-        setPendingConflicts((prev) => mergeByName(prev, conflicts));
+      if (samePathConflicts.length > 0) {
+        setPendingConflicts((prev) => mergeByPath(prev, samePathConflicts));
+      }
+      if (diffPathSameNames.length > 0) {
+        setFeedback({
+          message: "同名のファイルが他の場所にも存在します",
+          severity: "info",
+        });
       }
     },
     [addFiles, requestScrollToTop]
@@ -125,7 +148,34 @@ export function Layout({ children }: LayoutProps) {
     requestScrollToTop();
     setPendingConflicts([]);
   };
-  const cancelOverwrite = () => setPendingConflicts([]);
+
+  const cancelOverwrite = () => {
+    setPendingConflicts([]);
+  };
+
+  const generateAutoName = (baseName: string, existingNames: Set<string>): string => {
+    const dotIdx = baseName.lastIndexOf(".");
+    const base = dotIdx >= 0 ? baseName.slice(0, dotIdx) : baseName;
+    const ext = dotIdx >= 0 ? baseName.slice(dotIdx) : "";
+    const cleanBase = base.replace(/_v\d+$/, "");
+    let version = 2;
+    while (existingNames.has(`${cleanBase}_v${version}${ext}`)) {
+      version++;
+    }
+    return `${cleanBase}_v${version}${ext}`;
+  };
+
+  const handleRenameClick = () => {
+    const existingNames = new Set(useOpenFiles.getState().files.map((f) => f.name));
+    const usedNames = new Set(existingNames);
+    const renamedFiles: IncomingFile[] = pendingConflicts.map((c) => {
+      const newName = generateAutoName(c.name, usedNames);
+      usedNames.add(newName);
+      return { name: newName, path: newName, markdown: c.markdown };
+    });
+    addFiles(renamedFiles);
+    setPendingConflicts([]);
+  };
 
   const hasFiles = files.length > 0;
 
@@ -261,6 +311,7 @@ export function Layout({ children }: LayoutProps) {
         )}
       </Box>
 
+      {/* Close all confirmation dialog */}
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>すべて閉じる</DialogTitle>
         <DialogContent>
@@ -276,11 +327,12 @@ export function Layout({ children }: LayoutProps) {
         </DialogActions>
       </Dialog>
 
+      {/* Same-path conflict: overwrite confirmation dialog */}
       <Dialog open={pendingConflicts.length > 0} onClose={cancelOverwrite}>
-        <DialogTitle>同一ファイルがあります</DialogTitle>
+        <DialogTitle>同名ファイルが存在します</DialogTitle>
         <DialogContent>
           <DialogContentText component="div">
-            以下のファイルはすでに開いています。上書きしますか？
+            以下のファイルはすでに開いています。
             <Box
               component="ul"
               sx={{
@@ -299,8 +351,9 @@ export function Layout({ children }: LayoutProps) {
         </DialogContent>
         <DialogActions>
           <Button onClick={cancelOverwrite}>キャンセル</Button>
+          <Button onClick={handleRenameClick}>別名をつける</Button>
           <Button onClick={confirmOverwrite} color="primary" variant="contained">
-            上書き
+            上書きする
           </Button>
         </DialogActions>
       </Dialog>
@@ -326,10 +379,10 @@ export function Layout({ children }: LayoutProps) {
   );
 }
 
-function mergeByName(prev: IncomingFile[], next: IncomingFile[]): IncomingFile[] {
+function mergeByPath(prev: IncomingFile[], next: IncomingFile[]): IncomingFile[] {
   const map = new Map<string, IncomingFile>();
-  for (const item of prev) map.set(item.name, item);
-  for (const item of next) map.set(item.name, item);
+  for (const item of prev) map.set(item.path ?? item.name, item);
+  for (const item of next) map.set(item.path ?? item.name, item);
   return Array.from(map.values());
 }
 
