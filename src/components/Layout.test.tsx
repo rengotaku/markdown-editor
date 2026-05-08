@@ -9,6 +9,7 @@ import { act } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Layout } from "./Layout";
 import { useOpenFiles } from "@/hooks/useOpenFiles";
+import { useEditorInstance } from "@/hooks/useEditorInstance";
 import { useSidebarPrefs } from "@/hooks/useSidebarPrefs";
 import { simpleHash } from "@/utils/hash";
 
@@ -53,6 +54,7 @@ describe("Layout conflict dialog", () => {
   beforeEach(() => {
     localStorage.clear();
     useOpenFiles.setState({ files: [], activeId: null });
+    useEditorInstance.setState({ editor: null, scrollToTopToken: 0 });
     useSidebarPrefs.setState({ collapsed: true });
   });
 
@@ -127,6 +129,33 @@ describe("Layout conflict dialog", () => {
     await waitForElementToBeRemoved(() => screen.queryByText("同名ファイルが存在します"));
     const updated = useOpenFiles.getState().files.find((f) => f.name === "a.md");
     expect(updated?.markdown).toBe("new content");
+  });
+
+  it("overwrites the file and scrolls to top when 上書きする is clicked", async () => {
+    act(() => {
+      useOpenFiles.getState().addFiles([{ name: "a.md", path: "a.md", markdown: "old" }]);
+    });
+
+    const { container } = render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+
+    await act(async () => {
+      dropFiles(container.firstElementChild as HTMLElement, [
+        { name: "a.md", path: "a.md", content: "new content" },
+      ]);
+    });
+
+    await screen.findByText("同名ファイルが存在します");
+    const tokenBefore = useEditorInstance.getState().scrollToTopToken;
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "上書きする" }));
+    });
+
+    await waitForElementToBeRemoved(() => screen.queryByText("同名ファイルが存在します"));
+    expect(useEditorInstance.getState().scrollToTopToken).toBe(tokenBefore + 1);
   });
 
   it("closes the dialog when キャンセル is clicked", async () => {
@@ -239,6 +268,46 @@ describe("Layout conflict dialog", () => {
       const allFiles = useOpenFiles.getState().files;
       const instances = allFiles.filter((f) => f.name === "a.md");
       expect(instances).toHaveLength(2);
+    });
+  });
+
+  it("dropping a new file activates it", async () => {
+    const { container } = render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+
+    await act(async () => {
+      dropFiles(container.firstElementChild as HTMLElement, [
+        { name: "new.md", path: "new.md", content: "# New" },
+      ]);
+    });
+
+    await waitFor(() => {
+      const newFile = useOpenFiles.getState().files.find((f) => f.name === "new.md");
+      expect(newFile).toBeDefined();
+      expect(useOpenFiles.getState().activeId).toBe(newFile!.id);
+    });
+  });
+
+  it("dropping a new file requests scroll to top", async () => {
+    const { container } = render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+
+    const tokenBefore = useEditorInstance.getState().scrollToTopToken;
+
+    await act(async () => {
+      dropFiles(container.firstElementChild as HTMLElement, [
+        { name: "new.md", path: "new.md", content: "# New" },
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(useEditorInstance.getState().scrollToTopToken).toBe(tokenBefore + 1);
     });
   });
 });

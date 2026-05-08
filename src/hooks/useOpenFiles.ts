@@ -107,8 +107,7 @@ export const useOpenFiles = create<OpenFilesState>()(
             initialHash: simpleHash(item.markdown),
           }));
           const files = [...state.files, ...created];
-          const activeId = state.activeId ?? created[0].id;
-          return { files, activeId };
+          return { files, activeId: created[0].id };
         }),
 
       overwriteFiles: (incoming) =>
@@ -125,7 +124,11 @@ export const useOpenFiles = create<OpenFilesState>()(
               reloadToken: file.reloadToken + 1,
             };
           });
-          return { files };
+          const firstOverwritten = files.find((f) => byName.has(f.name));
+          return {
+            files,
+            activeId: firstOverwritten ? firstOverwritten.id : state.activeId,
+          };
         }),
 
       updateActiveMarkdown: (markdown) =>

@@ -17,6 +17,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { useOpenFiles, type IncomingFile } from "@/hooks/useOpenFiles";
+import { useEditorInstance } from "@/hooks/useEditorInstance";
 import { useEditorPrefs } from "@/hooks/useEditorPrefs";
 import { useFileDrop, type DroppedFile } from "@/hooks/useFileDrop";
 import { simpleHash, buildFixFilename } from "@/utils/hash";
@@ -35,6 +36,7 @@ export function Layout({ children }: LayoutProps) {
   const closeAll = useOpenFiles((s) => s.closeAll);
   const addFiles = useOpenFiles((s) => s.addFiles);
   const overwriteFiles = useOpenFiles((s) => s.overwriteFiles);
+  const requestScrollToTop = useEditorInstance((s) => s.requestScrollToTop);
   const centered = useEditorPrefs((s) => s.centered);
   const toggleCentered = useEditorPrefs((s) => s.toggleCentered);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -113,7 +115,10 @@ export function Layout({ children }: LayoutProps) {
         }
       }
 
-      if (fresh.length > 0) addFiles(fresh);
+      if (fresh.length > 0) {
+        addFiles(fresh);
+        requestScrollToTop();
+      }
       if (samePathConflicts.length > 0) {
         setPendingConflicts((prev) => mergeByPath(prev, samePathConflicts));
       }
@@ -124,7 +129,7 @@ export function Layout({ children }: LayoutProps) {
         });
       }
     },
-    [addFiles]
+    [addFiles, requestScrollToTop]
   );
 
   const handleDropError = useCallback(
@@ -140,6 +145,7 @@ export function Layout({ children }: LayoutProps) {
 
   const confirmOverwrite = () => {
     overwriteFiles(pendingConflicts);
+    requestScrollToTop();
     setPendingConflicts([]);
   };
 

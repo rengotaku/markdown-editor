@@ -24,11 +24,11 @@ describe("useOpenFiles", () => {
     expect(state.activeId).toBe(state.files[0].id);
   });
 
-  it("keeps existing active id when adding more files", () => {
+  it("activates the first newly added file when adding more files", () => {
     useOpenFiles.getState().addFiles([{ name: "a.md", markdown: "# A" }]);
-    const first = useOpenFiles.getState().activeId;
     useOpenFiles.getState().addFiles([{ name: "b.md", markdown: "# B" }]);
-    expect(useOpenFiles.getState().activeId).toBe(first);
+    const bId = useOpenFiles.getState().files.find((f) => f.name === "b.md")!.id;
+    expect(useOpenFiles.getState().activeId).toBe(bId);
   });
 
   it("marks active file dirty on content change", () => {
@@ -115,6 +115,32 @@ describe("useOpenFiles", () => {
     const other = useOpenFiles.getState().files.find((f) => f.name === "b.md")!;
     expect(other.markdown).toBe("# B");
     expect(other.reloadToken).toBe(0);
+  });
+
+  it("overwriteFiles activates the first overwritten file when it was not active", () => {
+    useOpenFiles.getState().addFiles([
+      { name: "a.md", markdown: "# A" },
+      { name: "b.md", markdown: "# B" },
+    ]);
+    const [a, b] = useOpenFiles.getState().files;
+    useOpenFiles.getState().setActive(a.id);
+
+    useOpenFiles.getState().overwriteFiles([{ name: "b.md", markdown: "# B reloaded" }]);
+
+    expect(useOpenFiles.getState().activeId).toBe(b.id);
+  });
+
+  it("overwriteFiles keeps the active id when the already-active file is overwritten", () => {
+    useOpenFiles.getState().addFiles([
+      { name: "a.md", markdown: "# A" },
+      { name: "b.md", markdown: "# B" },
+    ]);
+    const [a] = useOpenFiles.getState().files;
+    useOpenFiles.getState().setActive(a.id);
+
+    useOpenFiles.getState().overwriteFiles([{ name: "a.md", markdown: "# A reloaded" }]);
+
+    expect(useOpenFiles.getState().activeId).toBe(a.id);
   });
 
   it("overwriteFiles ignores names not present in the store", () => {
