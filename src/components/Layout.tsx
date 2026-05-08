@@ -19,6 +19,7 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { useOpenFiles, type IncomingFile } from "@/hooks/useOpenFiles";
 import { useEditorPrefs } from "@/hooks/useEditorPrefs";
 import { useFileDrop, type DroppedFile } from "@/hooks/useFileDrop";
+import { simpleHash, buildFixFilename } from "@/utils/hash";
 import { Sidebar } from "./Sidebar";
 
 interface LayoutProps {
@@ -55,7 +56,9 @@ export function Layout({ children }: LayoutProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = activeFile.name || buildFilename();
+    const isModified = simpleHash(activeFile.markdown) !== activeFile.initialHash;
+    const baseName = activeFile.name || buildFilename();
+    a.download = isModified ? buildFixFilename(baseName) : baseName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

@@ -6,10 +6,11 @@ import {
   waitForElementToBeRemoved,
 } from "@testing-library/react";
 import { act } from "react";
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Layout } from "./Layout";
 import { useOpenFiles } from "@/hooks/useOpenFiles";
 import { useSidebarPrefs } from "@/hooks/useSidebarPrefs";
+import { simpleHash } from "@/utils/hash";
 
 vi.mock("@/components/tiptap/TiptapEditor", () => ({
   TiptapEditor: () => <div data-testid="tiptap-editor" />,
@@ -239,5 +240,97 @@ describe("Layout conflict dialog", () => {
       const instances = allFiles.filter((f) => f.name === "a.md");
       expect(instances).toHaveLength(2);
     });
+  });
+});
+
+describe("Layout export filename", () => {
+  let anchorClick: ReturnType<typeof vi.fn>;
+  let createdAnchor: HTMLAnchorElement;
+
+  beforeEach(() => {
+    localStorage.clear();
+    useOpenFiles.setState({ files: [], activeId: null });
+    useSidebarPrefs.setState({ collapsed: true });
+
+    anchorClick = vi.fn();
+    const origCreate = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      if (tag === "a") {
+        createdAnchor = origCreate("a") as HTMLAnchorElement;
+        createdAnchor.click = anchorClick as () => void;
+        return createdAnchor;
+      }
+      return origCreate(tag);
+    });
+
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:mock"),
+      revokeObjectURL: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("uses original filename when content is unchanged", async () => {
+    act(() => {
+      useOpenFiles.setState({
+        files: [
+          {
+            id: "1",
+            name: "note.md",
+            path: "note.md",
+            markdown: "hello",
+            isDirty: false,
+            reloadToken: 0,
+            initialHash: simpleHash("hello"),
+          },
+        ],
+        activeId: "1",
+      });
+    });
+
+    render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "export markdown" }));
+    });
+
+    expect(createdAnchor.download).toBe("note.md");
+  });
+
+  it("appends _fix when content differs from upload", async () => {
+    act(() => {
+      useOpenFiles.setState({
+        files: [
+          {
+            id: "1",
+            name: "note.md",
+            path: "note.md",
+            markdown: "modified content",
+            isDirty: true,
+            reloadToken: 0,
+            initialHash: simpleHash("original content"),
+          },
+        ],
+        activeId: "1",
+      });
+    });
+
+    render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "export markdown" }));
+    });
+
+    expect(createdAnchor.download).toBe("note_fix.md");
   });
 });

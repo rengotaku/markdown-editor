@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
+import { simpleHash } from "@/utils/hash";
 
 export interface OpenFile {
   id: string;
@@ -8,6 +9,7 @@ export interface OpenFile {
   markdown: string;
   isDirty: boolean;
   reloadToken: number;
+  initialHash: string;
 }
 
 export interface IncomingFile {
@@ -56,6 +58,7 @@ function buildUntitledFile(existing: Set<string>): OpenFile {
     markdown: "",
     isDirty: false,
     reloadToken: 0,
+    initialHash: simpleHash(""),
   };
 }
 
@@ -101,6 +104,7 @@ export const useOpenFiles = create<OpenFilesState>()(
             markdown: item.markdown,
             isDirty: false,
             reloadToken: 0,
+            initialHash: simpleHash(item.markdown),
           }));
           const files = [...state.files, ...created];
           const activeId = state.activeId ?? created[0].id;
@@ -187,7 +191,10 @@ export const useOpenFiles = create<OpenFilesState>()(
           state.activeId = fresh.id;
           return;
         }
-        state.files = state.files.map((f) => (f.path ? f : { ...f, path: f.name }));
+        state.files = state.files.map((f) => ({
+          ...(f.path ? f : { ...f, path: f.name }),
+          initialHash: f.initialHash ?? simpleHash(f.markdown),
+        }));
         if (!state.activeId || !state.files.some((f) => f.id === state.activeId)) {
           state.activeId = state.files[0].id;
         }
