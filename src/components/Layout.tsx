@@ -13,8 +13,6 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import Switch from "@mui/material/Switch";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
 import DownloadIcon from "@mui/icons-material/Download";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -41,9 +39,6 @@ export function Layout({ children }: LayoutProps) {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingConflicts, setPendingConflicts] = useState<IncomingFile[]>([]);
-  const [renameStep, setRenameStep] = useState(false);
-  const [renameValues, setRenameValues] = useState<Record<string, string>>({});
-  const [renameErrors, setRenameErrors] = useState<Record<string, string>>({});
   const dropTargetRef = useRef<HTMLDivElement>(null);
 
   const activeFile = activeId ? files.find((f) => f.id === activeId) : undefined;
@@ -147,55 +142,30 @@ export function Layout({ children }: LayoutProps) {
 
   const cancelOverwrite = () => {
     setPendingConflicts([]);
-    setRenameStep(false);
-    setRenameValues({});
-    setRenameErrors({});
+  };
+
+  const generateAutoName = (baseName: string, existingNames: Set<string>): string => {
+    const dotIdx = baseName.lastIndexOf(".");
+    const base = dotIdx >= 0 ? baseName.slice(0, dotIdx) : baseName;
+    const ext = dotIdx >= 0 ? baseName.slice(dotIdx) : "";
+    const cleanBase = base.replace(/_v\d+$/, "");
+    let version = 2;
+    while (existingNames.has(`${cleanBase}_v${version}${ext}`)) {
+      version++;
+    }
+    return `${cleanBase}_v${version}${ext}`;
   };
 
   const handleRenameClick = () => {
-    const initial: Record<string, string> = {};
-    for (const c of pendingConflicts) {
-      initial[c.name] = c.name;
-    }
-    setRenameValues(initial);
-    setRenameErrors({});
-    setRenameStep(true);
-  };
-
-  const confirmRename = () => {
     const existingNames = new Set(useOpenFiles.getState().files.map((f) => f.name));
-    const newNamesUsed = new Set<string>();
-    const errors: Record<string, string> = {};
-
-    for (const conflict of pendingConflicts) {
-      const newName = renameValues[conflict.name]?.trim() ?? "";
-      if (!newName) {
-        errors[conflict.name] = "ファイル名を入力してください";
-      } else if (existingNames.has(newName)) {
-        errors[conflict.name] = "同名のファイルがすでに開いています";
-      } else if (newNamesUsed.has(newName)) {
-        errors[conflict.name] = "同じ名前が重複しています";
-      } else {
-        newNamesUsed.add(newName);
-      }
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setRenameErrors(errors);
-      return;
-    }
-
-    const renamedFiles: IncomingFile[] = pendingConflicts.map((c) => ({
-      name: renameValues[c.name].trim(),
-      path: renameValues[c.name].trim(),
-      markdown: c.markdown,
-    }));
-
+    const usedNames = new Set(existingNames);
+    const renamedFiles: IncomingFile[] = pendingConflicts.map((c) => {
+      const newName = generateAutoName(c.name, usedNames);
+      usedNames.add(newName);
+      return { name: newName, path: newName, markdown: c.markdown };
+    });
     addFiles(renamedFiles);
     setPendingConflicts([]);
-    setRenameStep(false);
-    setRenameValues({});
-    setRenameErrors({});
   };
 
   const hasFiles = files.length > 0;
@@ -349,10 +319,7 @@ export function Layout({ children }: LayoutProps) {
       </Dialog>
 
       {/* Same-path conflict: overwrite confirmation dialog */}
-      <Dialog
-        open={pendingConflicts.length > 0 && !renameStep}
-        onClose={cancelOverwrite}
-      >
+      <Dialog open={pendingConflicts.length > 0} onClose={cancelOverwrite}>
         <DialogTitle>同名ファイルが存在します</DialogTitle>
         <DialogContent>
           <DialogContentText component="div">
@@ -378,39 +345,6 @@ export function Layout({ children }: LayoutProps) {
           <Button onClick={handleRenameClick}>別名をつける</Button>
           <Button onClick={confirmOverwrite} color="primary" variant="contained">
             上書きする
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Rename dialog */}
-      <Dialog open={pendingConflicts.length > 0 && renameStep} onClose={cancelOverwrite}>
-        <DialogTitle>新しいファイル名を入力</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-            {pendingConflicts.map((c) => (
-              <Box key={c.name}>
-                <Typography variant="body2" sx={{ mb: 0.5, color: "text.secondary" }}>
-                  {c.name}
-                </Typography>
-                <TextField
-                  size="small"
-                  fullWidth
-                  value={renameValues[c.name] ?? c.name}
-                  onChange={(e) =>
-                    setRenameValues((prev) => ({ ...prev, [c.name]: e.target.value }))
-                  }
-                  error={Boolean(renameErrors[c.name])}
-                  helperText={renameErrors[c.name]}
-                  inputProps={{ "aria-label": `新しいファイル名: ${c.name}` }}
-                />
-              </Box>
-            ))}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRenameStep(false)}>戻る</Button>
-          <Button onClick={confirmRename} color="primary" variant="contained">
-            保存
           </Button>
         </DialogActions>
       </Dialog>

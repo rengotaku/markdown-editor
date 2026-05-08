@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor, waitForElementToBeRemoved } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  waitForElementToBeRemoved,
+} from "@testing-library/react";
 import { act } from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Layout } from "./Layout";
@@ -149,34 +155,7 @@ describe("Layout conflict dialog", () => {
     expect(file?.markdown).toBe("old");
   });
 
-  it("shows rename dialog when 別名をつける is clicked", async () => {
-    act(() => {
-      useOpenFiles.getState().addFiles([{ name: "a.md", path: "a.md", markdown: "old" }]);
-    });
-
-    const { container } = render(
-      <Layout>
-        <div />
-      </Layout>
-    );
-
-    await act(async () => {
-      dropFiles(container.firstElementChild as HTMLElement, [
-        { name: "a.md", path: "a.md", content: "new" },
-      ]);
-    });
-
-    await screen.findByText("同名ファイルが存在します");
-    act(() => {
-      fireEvent.click(screen.getByRole("button", { name: "別名をつける" }));
-    });
-
-    expect(await screen.findByText("新しいファイル名を入力")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "戻る" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
-  });
-
-  it("saves file with new name when rename is confirmed", async () => {
+  it("saves file as _v2 automatically when 別名をつける is clicked", async () => {
     act(() => {
       useOpenFiles.getState().addFiles([{ name: "a.md", path: "a.md", markdown: "old" }]);
     });
@@ -198,19 +177,40 @@ describe("Layout conflict dialog", () => {
       fireEvent.click(screen.getByRole("button", { name: "別名をつける" }));
     });
 
-    await screen.findByText("新しいファイル名を入力");
-    const input = screen.getByRole("textbox", { name: "新しいファイル名: a.md" });
+    await waitForElementToBeRemoved(() => screen.queryByText("同名ファイルが存在します"));
+    const original = useOpenFiles.getState().files.find((f) => f.name === "a.md");
+    const renamed = useOpenFiles.getState().files.find((f) => f.name === "a_v2.md");
+    expect(original?.markdown).toBe("old");
+    expect(renamed?.markdown).toBe("new content");
+  });
+
+  it("uses _v3 when _v2 already exists", async () => {
     act(() => {
-      fireEvent.change(input, { target: { value: "renamed.md" } });
-    });
-    act(() => {
-      fireEvent.click(screen.getByRole("button", { name: "保存" }));
+      useOpenFiles.getState().addFiles([
+        { name: "a.md", path: "a.md", markdown: "old" },
+        { name: "a_v2.md", path: "a_v2.md", markdown: "v2" },
+      ]);
     });
 
-    await waitForElementToBeRemoved(() => screen.queryByText("新しいファイル名を入力"));
-    const original = useOpenFiles.getState().files.find((f) => f.name === "a.md");
-    const renamed = useOpenFiles.getState().files.find((f) => f.name === "renamed.md");
-    expect(original?.markdown).toBe("old");
+    const { container } = render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+
+    await act(async () => {
+      dropFiles(container.firstElementChild as HTMLElement, [
+        { name: "a.md", path: "a.md", content: "new content" },
+      ]);
+    });
+
+    await screen.findByText("同名ファイルが存在します");
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "別名をつける" }));
+    });
+
+    await waitForElementToBeRemoved(() => screen.queryByText("同名ファイルが存在します"));
+    const renamed = useOpenFiles.getState().files.find((f) => f.name === "a_v3.md");
     expect(renamed?.markdown).toBe("new content");
   });
 
