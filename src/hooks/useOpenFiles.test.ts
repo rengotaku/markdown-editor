@@ -24,11 +24,11 @@ describe("useOpenFiles", () => {
     expect(state.activeId).toBe(state.files[0].id);
   });
 
-  it("keeps existing active id when adding more files", () => {
+  it("activates the first newly added file when adding more files", () => {
     useOpenFiles.getState().addFiles([{ name: "a.md", markdown: "# A" }]);
-    const first = useOpenFiles.getState().activeId;
     useOpenFiles.getState().addFiles([{ name: "b.md", markdown: "# B" }]);
-    expect(useOpenFiles.getState().activeId).toBe(first);
+    const bId = useOpenFiles.getState().files.find((f) => f.name === "b.md")!.id;
+    expect(useOpenFiles.getState().activeId).toBe(bId);
   });
 
   it("marks active file dirty on content change", () => {

@@ -98,12 +98,15 @@ export function Layout({ children }: LayoutProps) {
           seen.add(file.name);
         }
       }
-      if (fresh.length > 0) addFiles(fresh);
+      if (fresh.length > 0) {
+        addFiles(fresh);
+        requestScrollToTop();
+      }
       if (conflicts.length > 0) {
         setPendingConflicts((prev) => mergeByName(prev, conflicts));
       }
     },
-    [addFiles]
+    [addFiles, requestScrollToTop]
   );
 
   const handleDropError = useCallback(

@@ -132,6 +132,37 @@ describe("Layout overwrite dialog", () => {
     expect(useEditorInstance.getState().scrollToTopToken).toBe(tokenBefore + 1);
   });
 
+  it("dropping a new file activates it", () => {
+    render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+
+    act(() => {
+      capturedOnDropMarkdown?.([{ name: "new.md", markdown: "# New" }]);
+    });
+
+    const newId = useOpenFiles.getState().files.find((f) => f.name === "new.md")!.id;
+    expect(useOpenFiles.getState().activeId).toBe(newId);
+  });
+
+  it("dropping a new file requests scroll to top", () => {
+    render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+
+    const tokenBefore = useEditorInstance.getState().scrollToTopToken;
+
+    act(() => {
+      capturedOnDropMarkdown?.([{ name: "new.md", markdown: "# New" }]);
+    });
+
+    expect(useEditorInstance.getState().scrollToTopToken).toBe(tokenBefore + 1);
+  });
+
   it("cancelling overwrite does not change active file or scroll", async () => {
     const user = userEvent.setup();
     useOpenFiles.getState().addFiles([

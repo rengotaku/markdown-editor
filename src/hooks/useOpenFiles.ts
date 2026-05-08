@@ -98,8 +98,7 @@ export const useOpenFiles = create<OpenFilesState>()(
             reloadToken: 0,
           }));
           const files = [...state.files, ...created];
-          const activeId = state.activeId ?? created[0].id;
-          return { files, activeId };
+          return { files, activeId: created[0].id };
         }),
 
       overwriteFiles: (incoming) =>
