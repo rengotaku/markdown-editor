@@ -12,5 +12,6 @@ export const useEditorInstance = create<EditorInstanceState>((set) => ({
   editor: null,
   setEditor: (editor) => set({ editor }),
   scrollToTopToken: 0,
-  requestScrollToTop: () => set((state) => ({ scrollToTopToken: state.scrollToTopToken + 1 })),
+  requestScrollToTop: () =>
+    set((state) => ({ scrollToTopToken: state.scrollToTopToken + 1 })),
 }));

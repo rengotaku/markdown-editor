@@ -117,7 +117,10 @@ export const useOpenFiles = create<OpenFilesState>()(
             };
           });
           const firstOverwritten = files.find((f) => byName.has(f.name));
-          return { files, activeId: firstOverwritten ? firstOverwritten.id : state.activeId };
+          return {
+            files,
+            activeId: firstOverwritten ? firstOverwritten.id : state.activeId,
+          };
         }),
 
       updateActiveMarkdown: (markdown) =>

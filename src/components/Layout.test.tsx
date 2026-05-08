@@ -14,10 +14,12 @@ vi.mock("@/components/tiptap/TiptapEditor", () => ({
 let capturedOnDropMarkdown: ((files: DroppedFile[]) => void) | null = null;
 
 vi.mock("@/hooks/useFileDrop", () => ({
-  useFileDrop: vi.fn(({ onDropMarkdown }: { onDropMarkdown: (files: DroppedFile[]) => void }) => {
-    capturedOnDropMarkdown = onDropMarkdown;
-    return { isDragging: false };
-  }),
+  useFileDrop: vi.fn(
+    ({ onDropMarkdown }: { onDropMarkdown: (files: DroppedFile[]) => void }) => {
+      capturedOnDropMarkdown = onDropMarkdown;
+      return { isDragging: false };
+    }
+  ),
 }));
 
 describe("Layout header buttons", () => {
@@ -85,10 +87,12 @@ describe("Layout overwrite dialog", () => {
       { name: "a.md", markdown: "# A" },
       { name: "report.md", markdown: "# Old" },
     ]);
-    const reportId = useOpenFiles.getState().files.find((f) => f.name === "report.md")!.id;
-    useOpenFiles.getState().setActive(
-      useOpenFiles.getState().files.find((f) => f.name === "a.md")!.id
-    );
+    const reportId = useOpenFiles
+      .getState()
+      .files.find((f) => f.name === "report.md")!.id;
+    useOpenFiles
+      .getState()
+      .setActive(useOpenFiles.getState().files.find((f) => f.name === "a.md")!.id);
 
     render(
       <Layout>
