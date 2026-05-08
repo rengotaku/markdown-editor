@@ -25,6 +25,7 @@ function readAsText(file: File): Promise<string> {
 
 export interface DroppedFile {
   name: string;
+  path: string;
   markdown: string;
 }
 
@@ -93,6 +94,7 @@ export function useFileDrop({
         const results = await Promise.all(
           markdownFiles.map(async (file) => ({
             name: file.name,
+            path: file.webkitRelativePath || file.name,
             markdown: await readAsText(file),
           }))
         );
