@@ -17,6 +17,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { useOpenFiles, type IncomingFile } from "@/hooks/useOpenFiles";
+import { useEditorInstance } from "@/hooks/useEditorInstance";
 import { useEditorPrefs } from "@/hooks/useEditorPrefs";
 import { useFileDrop, type DroppedFile } from "@/hooks/useFileDrop";
 import { Sidebar } from "./Sidebar";
@@ -34,6 +35,7 @@ export function Layout({ children }: LayoutProps) {
   const closeAll = useOpenFiles((s) => s.closeAll);
   const addFiles = useOpenFiles((s) => s.addFiles);
   const overwriteFiles = useOpenFiles((s) => s.overwriteFiles);
+  const requestScrollToTop = useEditorInstance((s) => s.requestScrollToTop);
   const centered = useEditorPrefs((s) => s.centered);
   const toggleCentered = useEditorPrefs((s) => s.toggleCentered);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -117,6 +119,7 @@ export function Layout({ children }: LayoutProps) {
 
   const confirmOverwrite = () => {
     overwriteFiles(pendingConflicts);
+    requestScrollToTop();
     setPendingConflicts([]);
   };
   const cancelOverwrite = () => setPendingConflicts([]);

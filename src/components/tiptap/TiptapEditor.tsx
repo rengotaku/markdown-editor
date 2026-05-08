@@ -32,6 +32,8 @@ function getEditorMarkdown(editor: { storage: unknown }): string {
 export function TiptapEditor() {
   const centered = useEditorPrefs((s) => s.centered);
   const activeId = useOpenFiles((s) => s.activeId);
+  const scrollToTopToken = useEditorInstance((s) => s.scrollToTopToken);
+  const containerRef = useRef<HTMLDivElement>(null);
   const activeReloadToken = useOpenFiles((s) => {
     const file = s.files.find((f) => f.id === s.activeId);
     return file ? file.reloadToken : 0;
@@ -98,8 +100,16 @@ export function TiptapEditor() {
     }
   }, [editor, activeId, activeReloadToken]);
 
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      containerRef.current?.scrollTo({ top: 0 });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [scrollToTopToken]);
+
   return (
     <Box
+      ref={containerRef}
       className={centered ? "editor-centered" : undefined}
       sx={{
         height: "100%",

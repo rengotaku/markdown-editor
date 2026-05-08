@@ -117,6 +117,32 @@ describe("useOpenFiles", () => {
     expect(other.reloadToken).toBe(0);
   });
 
+  it("overwriteFiles activates the first overwritten file when it was not active", () => {
+    useOpenFiles.getState().addFiles([
+      { name: "a.md", markdown: "# A" },
+      { name: "b.md", markdown: "# B" },
+    ]);
+    const [a, b] = useOpenFiles.getState().files;
+    useOpenFiles.getState().setActive(a.id);
+
+    useOpenFiles.getState().overwriteFiles([{ name: "b.md", markdown: "# B reloaded" }]);
+
+    expect(useOpenFiles.getState().activeId).toBe(b.id);
+  });
+
+  it("overwriteFiles keeps the active id when the already-active file is overwritten", () => {
+    useOpenFiles.getState().addFiles([
+      { name: "a.md", markdown: "# A" },
+      { name: "b.md", markdown: "# B" },
+    ]);
+    const [a] = useOpenFiles.getState().files;
+    useOpenFiles.getState().setActive(a.id);
+
+    useOpenFiles.getState().overwriteFiles([{ name: "a.md", markdown: "# A reloaded" }]);
+
+    expect(useOpenFiles.getState().activeId).toBe(a.id);
+  });
+
   it("overwriteFiles ignores names not present in the store", () => {
     useOpenFiles.getState().addFiles([{ name: "a.md", markdown: "# A" }]);
     useOpenFiles.getState().overwriteFiles([{ name: "missing.md", markdown: "# X" }]);
