@@ -4,6 +4,7 @@ import { persist, createJSONStorage, type StateStorage } from "zustand/middlewar
 export interface OpenFile {
   id: string;
   name: string;
+  path: string;
   markdown: string;
   isDirty: boolean;
   reloadToken: number;
@@ -11,6 +12,7 @@ export interface OpenFile {
 
 export interface IncomingFile {
   name: string;
+  path?: string;
   markdown: string;
 }
 
@@ -46,9 +48,11 @@ function nextUntitledName(existing: Set<string>): string {
 }
 
 function buildUntitledFile(existing: Set<string>): OpenFile {
+  const name = nextUntitledName(existing);
   return {
     id: generateId(),
-    name: nextUntitledName(existing),
+    name,
+    path: name,
     markdown: "",
     isDirty: false,
     reloadToken: 0,
@@ -93,6 +97,7 @@ export const useOpenFiles = create<OpenFilesState>()(
           const created: OpenFile[] = incoming.map((item) => ({
             id: generateId(),
             name: item.name,
+            path: item.path ?? item.name,
             markdown: item.markdown,
             isDirty: false,
             reloadToken: 0,
@@ -182,6 +187,7 @@ export const useOpenFiles = create<OpenFilesState>()(
           state.activeId = fresh.id;
           return;
         }
+        state.files = state.files.map((f) => (f.path ? f : { ...f, path: f.name }));
         if (!state.activeId || !state.files.some((f) => f.id === state.activeId)) {
           state.activeId = state.files[0].id;
         }
