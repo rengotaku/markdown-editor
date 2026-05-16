@@ -10,9 +10,16 @@ import Divider from "@mui/material/Divider";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import { moveTableRow, moveTableCol } from "./tableDragDrop";
 
 interface TableMenuProps {
   editor: Editor;
+}
+
+interface DragState {
+  type: "row" | "col";
+  fromIndex: number;
+  tableEl: HTMLTableElement;
 }
 
 function getEditorDom(editor: Editor): HTMLElement | null {
@@ -293,6 +300,165 @@ export function TableMenu({ editor }: TableMenuProps) {
   const [activeRowIndex, setActiveRowIndex] = useState<number>(-1);
   const [activeColIndex, setActiveColIndex] = useState<number>(-1);
 
+  const dragStateRef = useRef<DragState | null>(null);
+  const dropInsertRef = useRef<{ type: "row" | "col"; insertBefore: number } | null>(
+    null
+  );
+  const [dropIndicatorStyle, setDropIndicatorStyle] =
+    useState<React.CSSProperties | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const clearDragState = useCallback(() => {
+    dragStateRef.current = null;
+    dropInsertRef.current = null;
+    setDropIndicatorStyle(null);
+    setIsDragging(false);
+  }, []);
+
+  const handleRowDragStart = useCallback(
+    (e: React.DragEvent, rowIndex: number) => {
+      if (!tableRef.current) {
+        e.preventDefault();
+        return;
+      }
+      e.dataTransfer.effectAllowed = "move";
+      dragStateRef.current = {
+        type: "row",
+        fromIndex: rowIndex,
+        tableEl: tableRef.current,
+      };
+      setIsDragging(true);
+    },
+    [tableRef]
+  );
+
+  const handleColDragStart = useCallback(
+    (e: React.DragEvent, colIndex: number) => {
+      if (!tableRef.current) {
+        e.preventDefault();
+        return;
+      }
+      e.dataTransfer.effectAllowed = "move";
+      dragStateRef.current = {
+        type: "col",
+        fromIndex: colIndex,
+        tableEl: tableRef.current,
+      };
+      setIsDragging(true);
+    },
+    [tableRef]
+  );
+
+  useEffect(() => {
+    const onDragOver = (e: DragEvent) => {
+      const ds = dragStateRef.current;
+      if (!ds) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+
+      const { type, tableEl } = ds;
+
+      if (type === "row") {
+        const rows = Array.from(tableEl.querySelectorAll("tr"));
+        if (!rows.length) return;
+
+        let insertBefore = rows.length;
+        for (let i = 0; i < rows.length; i++) {
+          const rect = rows[i].getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) {
+            insertBefore = i;
+            break;
+          }
+        }
+        dropInsertRef.current = { type: "row", insertBefore };
+
+        const tableRect = tableEl.getBoundingClientRect();
+        let top: number;
+        if (insertBefore === 0) {
+          top = rows[0].getBoundingClientRect().top;
+        } else if (insertBefore >= rows.length) {
+          top = rows[rows.length - 1].getBoundingClientRect().bottom;
+        } else {
+          top = rows[insertBefore - 1].getBoundingClientRect().bottom;
+        }
+
+        setDropIndicatorStyle({
+          position: "fixed",
+          top: top - 1,
+          left: tableRect.left,
+          width: tableRect.width,
+          height: 2,
+          backgroundColor: "#1565c0",
+          borderRadius: 1,
+          pointerEvents: "none",
+          zIndex: 9999,
+        });
+      } else {
+        const headerRow = tableEl.querySelector("tr");
+        if (!headerRow) return;
+        const cells = Array.from(headerRow.querySelectorAll("td, th"));
+        if (!cells.length) return;
+
+        let insertBefore = cells.length;
+        for (let i = 0; i < cells.length; i++) {
+          const rect = cells[i].getBoundingClientRect();
+          if (e.clientX < rect.left + rect.width / 2) {
+            insertBefore = i;
+            break;
+          }
+        }
+        dropInsertRef.current = { type: "col", insertBefore };
+
+        const tableRect = tableEl.getBoundingClientRect();
+        let left: number;
+        if (insertBefore === 0) {
+          left = cells[0].getBoundingClientRect().left;
+        } else if (insertBefore >= cells.length) {
+          left = cells[cells.length - 1].getBoundingClientRect().right;
+        } else {
+          left = cells[insertBefore - 1].getBoundingClientRect().right;
+        }
+
+        setDropIndicatorStyle({
+          position: "fixed",
+          top: tableRect.top,
+          left: left - 1,
+          width: 2,
+          height: tableRect.height,
+          backgroundColor: "#1565c0",
+          borderRadius: 1,
+          pointerEvents: "none",
+          zIndex: 9999,
+        });
+      }
+    };
+
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
+      const ds = dragStateRef.current;
+      const di = dropInsertRef.current;
+      if (ds && di) {
+        if (ds.type === "row") {
+          moveTableRow(editor, ds.tableEl, ds.fromIndex, di.insertBefore);
+        } else {
+          moveTableCol(editor, ds.tableEl, ds.fromIndex, di.insertBefore);
+        }
+      }
+      clearDragState();
+    };
+
+    const onDragEnd = () => clearDragState();
+
+    document.addEventListener("dragover", onDragOver);
+    document.addEventListener("drop", onDrop);
+    document.addEventListener("dragend", onDragEnd);
+    return () => {
+      document.removeEventListener("dragover", onDragOver);
+      document.removeEventListener("drop", onDrop);
+      document.removeEventListener("dragend", onDragEnd);
+    };
+  }, [editor, clearDragState]);
+
   const handleRowGripClick = (e: React.MouseEvent<HTMLElement>, rowIndex: number) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setRowMenuPos({ top: rect.bottom, left: rect.left });
@@ -371,15 +537,17 @@ export function TableMenu({ editor }: TableMenuProps) {
     color: "rgba(55, 53, 47, 0.35)",
     "&:hover": { bgcolor: "rgba(55, 53, 47, 0.1)", color: "rgba(55, 53, 47, 0.6)" },
     zIndex: 1200,
-    cursor: "pointer",
+    cursor: "grab",
   } as const;
 
   const rowGrip =
-    hoveredRow && !rowMenuPos ? (
+    hoveredRow && !rowMenuPos && !isDragging ? (
       <IconButton
         data-table-grip="row"
+        draggable
         size="small"
         onClick={(e) => handleRowGripClick(e, hoveredRow.index)}
+        onDragStart={(e) => handleRowDragStart(e, hoveredRow.index)}
         onMouseEnter={onGripEnter}
         onMouseLeave={onGripLeave}
         aria-label="Row options"
@@ -398,11 +566,13 @@ export function TableMenu({ editor }: TableMenuProps) {
     ) : null;
 
   const colGrip =
-    hoveredColumn && !colMenuPos ? (
+    hoveredColumn && !colMenuPos && !isDragging ? (
       <IconButton
         data-table-grip="column"
+        draggable
         size="small"
         onClick={(e) => handleColGripClick(e, hoveredColumn.index)}
+        onDragStart={(e) => handleColDragStart(e, hoveredColumn.index)}
         onMouseEnter={onGripEnter}
         onMouseLeave={onGripLeave}
         aria-label="Column options"
@@ -480,8 +650,9 @@ export function TableMenu({ editor }: TableMenuProps) {
     <>
       {rowGrip}
       {colGrip}
-      {addColumnButton}
-      {addRowButton}
+      {!isDragging && addColumnButton}
+      {!isDragging && addRowButton}
+      {dropIndicatorStyle && <div style={dropIndicatorStyle} />}
 
       <Menu
         open={Boolean(rowMenuPos)}
