@@ -22,7 +22,10 @@ interface TableNodeResult {
   tableNode: PMNode;
 }
 
-function findTableNode(editor: Editor, tableEl: HTMLTableElement): TableNodeResult | null {
+function findTableNode(
+  editor: Editor,
+  tableEl: HTMLTableElement
+): TableNodeResult | null {
   const { view } = editor;
   const { state } = view;
 
@@ -66,7 +69,11 @@ export function moveTableRow(
   if (!newRows) return;
 
   const tr = editor.view.state.tr;
-  tr.replaceWith(tableStart + 1, tableStart + tableNode.nodeSize - 1, Fragment.fromArray(newRows));
+  tr.replaceWith(
+    tableStart + 1,
+    tableStart + tableNode.nodeSize - 1,
+    Fragment.fromArray(newRows)
+  );
   editor.view.dispatch(tr);
 }
 
@@ -101,10 +108,16 @@ export function moveTableCol(
       return;
     }
 
-    newRows.push(rowNode.type.create(rowNode.attrs, Fragment.fromArray(newCells), rowNode.marks));
+    newRows.push(
+      rowNode.type.create(rowNode.attrs, Fragment.fromArray(newCells), rowNode.marks)
+    );
   });
 
   const tr = editor.view.state.tr;
-  tr.replaceWith(tableStart + 1, tableStart + tableNode.nodeSize - 1, Fragment.fromArray(newRows));
+  tr.replaceWith(
+    tableStart + 1,
+    tableStart + tableNode.nodeSize - 1,
+    Fragment.fromArray(newRows)
+  );
   editor.view.dispatch(tr);
 }

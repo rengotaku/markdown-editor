@@ -301,8 +301,11 @@ export function TableMenu({ editor }: TableMenuProps) {
   const [activeColIndex, setActiveColIndex] = useState<number>(-1);
 
   const dragStateRef = useRef<DragState | null>(null);
-  const dropInsertRef = useRef<{ type: "row" | "col"; insertBefore: number } | null>(null);
-  const [dropIndicatorStyle, setDropIndicatorStyle] = useState<React.CSSProperties | null>(null);
+  const dropInsertRef = useRef<{ type: "row" | "col"; insertBefore: number } | null>(
+    null
+  );
+  const [dropIndicatorStyle, setDropIndicatorStyle] =
+    useState<React.CSSProperties | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const clearDragState = useCallback(() => {
@@ -319,7 +322,11 @@ export function TableMenu({ editor }: TableMenuProps) {
         return;
       }
       e.dataTransfer.effectAllowed = "move";
-      dragStateRef.current = { type: "row", fromIndex: rowIndex, tableEl: tableRef.current };
+      dragStateRef.current = {
+        type: "row",
+        fromIndex: rowIndex,
+        tableEl: tableRef.current,
+      };
       setIsDragging(true);
     },
     [tableRef]
@@ -332,7 +339,11 @@ export function TableMenu({ editor }: TableMenuProps) {
         return;
       }
       e.dataTransfer.effectAllowed = "move";
-      dragStateRef.current = { type: "col", fromIndex: colIndex, tableEl: tableRef.current };
+      dragStateRef.current = {
+        type: "col",
+        fromIndex: colIndex,
+        tableEl: tableRef.current,
+      };
       setIsDragging(true);
     },
     [tableRef]
