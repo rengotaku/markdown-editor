@@ -1,9 +1,14 @@
-.PHONY: dev dev-bg build preview stop status lint format test test-watch test-coverage clean pages-create pages-login deploy deploy-preview
+.PHONY: ci dev dev-bg build preview stop status lint format test test-watch test-coverage clean pages-create pages-login deploy deploy-preview
 
 # Variables
 PORT ?= 5173
 PID_FILE := .dev.pid
 LOG_FILE := .dev.log
+
+ci: lint format-check type-check test build
+
+type-check:
+	npx tsc --noEmit
 
 dev:
 	npm run dev
