@@ -119,7 +119,9 @@ describe("paste via text/plain (clipboardTextParser path)", () => {
   it("correctly parses markdown pasted as text/plain", () => {
     const editor = createEditor();
     const storage = editor.storage as {
-      markdown?: { parser: { parse: (s: string, opts?: { inline?: boolean }) => string } };
+      markdown?: {
+        parser: { parse: (s: string, opts?: { inline?: boolean }) => string };
+      };
     };
     const parser = storage.markdown?.parser;
     expect(parser).toBeDefined();
@@ -196,7 +198,9 @@ describe("MarkdownPaste extension: text/plain preferred over text/html when code
     const editor = createEditor();
 
     const storage = editor.storage as {
-      markdown?: { parser: { parse: (s: string, opts?: { inline?: boolean }) => string } };
+      markdown?: {
+        parser: { parse: (s: string, opts?: { inline?: boolean }) => string };
+      };
     };
     const parser = storage.markdown?.parser;
     expect(parser).toBeDefined();
@@ -237,9 +241,7 @@ describe("MarkdownPaste extension: text/plain preferred over text/html when code
     expect(output).toContain("/app/*/shared");
     expect(output).not.toContain("\\*");
     const lines = output.split("\n");
-    const codeLines = lines.filter(
-      (l) => !l.startsWith("```") && l.trim().length > 0
-    );
+    const codeLines = lines.filter((l) => !l.startsWith("```") && l.trim().length > 0);
     codeLines.forEach((line) => {
       expect(line).not.toMatch(/\\$/);
     });
