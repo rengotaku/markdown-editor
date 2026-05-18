@@ -20,6 +20,7 @@ import { useEditorPrefs } from "@/hooks/useEditorPrefs";
 import { TableMenu } from "./toolbar/TableMenu";
 import { SlashCommand } from "./extensions/SlashCommand";
 import { MermaidBlock } from "./extensions/MermaidBlock";
+import { MarkdownPaste } from "./extensions/MarkdownPaste";
 import "./styles/editor.css";
 
 function getEditorMarkdown(editor: { storage: unknown }): string {
@@ -60,6 +61,7 @@ export function TiptapEditor() {
       TaskItem.configure({ nested: true }),
       SlashCommand,
       MermaidBlock,
+      MarkdownPaste,
     ],
     content: "",
     editable: true,
