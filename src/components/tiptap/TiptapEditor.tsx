@@ -48,7 +48,7 @@ export function TiptapEditor() {
       Placeholder.configure({
         placeholder: "Start writing, or type / for commands...",
       }),
-      Link.configure({ openOnClick: false }),
+      Link.configure({ openOnClick: true, autolink: true, linkOnPaste: true }),
       Markdown.configure({
         transformPastedText: true,
         transformCopiedText: false,

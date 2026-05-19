@@ -90,6 +90,8 @@
 
 .ProseMirror a {
   color: #0066cc;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .ProseMirror ul,
