@@ -4,7 +4,7 @@ import { useOpenFiles } from "./useOpenFiles";
 describe("useOpenFiles", () => {
   beforeEach(() => {
     localStorage.clear();
-    useOpenFiles.setState({ files: [], activeId: null });
+    useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
   });
 
   it("starts with no files and no active id when reset", () => {
@@ -179,5 +179,235 @@ describe("useOpenFiles", () => {
     useOpenFiles.getState().createUntitled();
     const names = useOpenFiles.getState().files.map((f) => f.name);
     expect(names).toEqual(["untitled.md", "untitled-2.md", "untitled-3.md"]);
+  });
+
+  it("addFiles appends file ids to rootOrder", () => {
+    useOpenFiles.getState().addFiles([
+      { name: "a.md", markdown: "# A" },
+      { name: "b.md", markdown: "# B" },
+    ]);
+    const state = useOpenFiles.getState();
+    expect(state.rootOrder).toEqual(state.files.map((f) => f.id));
+  });
+});
+
+describe("useOpenFiles - folder management", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
+  });
+
+  it("addFilesInNewFolder creates a folder with the given name and places files inside", () => {
+    useOpenFiles.getState().addFilesInNewFolder(
+      [
+        { name: "a.md", markdown: "# A" },
+        { name: "b.md", markdown: "# B" },
+      ],
+      "my-folder"
+    );
+    const state = useOpenFiles.getState();
+    expect(state.folders).toHaveLength(1);
+    expect(state.folders[0].name).toBe("my-folder");
+    expect(state.folders[0].childIds).toHaveLength(2);
+    expect(state.folders[0].expanded).toBe(true);
+    expect(state.files).toHaveLength(2);
+    state.files.forEach((f) => expect(f.folderId).toBe(state.folders[0].id));
+    expect(state.rootOrder).toEqual([state.folders[0].id]);
+    expect(state.activeId).toBe(state.files[0].id);
+  });
+
+  it("addFilesInNewFolder appends folder id to rootOrder after existing root items", () => {
+    useOpenFiles.getState().addFiles([{ name: "root.md", markdown: "" }]);
+    const rootFileId = useOpenFiles.getState().files[0].id;
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "a.md", markdown: "" }], "folder1");
+    const state = useOpenFiles.getState();
+    const folderId = state.folders[0].id;
+    expect(state.rootOrder).toEqual([rootFileId, folderId]);
+  });
+
+  it("renameFolder changes the folder name", () => {
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "a.md", markdown: "" }], "old-name");
+    const folderId = useOpenFiles.getState().folders[0].id;
+    useOpenFiles.getState().renameFolder(folderId, "new-name");
+    expect(useOpenFiles.getState().folders[0].name).toBe("new-name");
+  });
+
+  it("toggleFolder flips expanded from true to false", () => {
+    useOpenFiles.getState().addFilesInNewFolder([{ name: "a.md", markdown: "" }], "f");
+    const folderId = useOpenFiles.getState().folders[0].id;
+    expect(useOpenFiles.getState().folders[0].expanded).toBe(true);
+    useOpenFiles.getState().toggleFolder(folderId);
+    expect(useOpenFiles.getState().folders[0].expanded).toBe(false);
+  });
+
+  it("toggleFolder flips expanded from false back to true", () => {
+    useOpenFiles.getState().addFilesInNewFolder([{ name: "a.md", markdown: "" }], "f");
+    const folderId = useOpenFiles.getState().folders[0].id;
+    useOpenFiles.getState().toggleFolder(folderId);
+    useOpenFiles.getState().toggleFolder(folderId);
+    expect(useOpenFiles.getState().folders[0].expanded).toBe(true);
+  });
+
+  it("deleteFolder removes the folder and moves files to root", () => {
+    useOpenFiles.getState().addFilesInNewFolder(
+      [
+        { name: "a.md", markdown: "# A" },
+        { name: "b.md", markdown: "# B" },
+      ],
+      "my-folder"
+    );
+    const state = useOpenFiles.getState();
+    const folderId = state.folders[0].id;
+    const fileIds = state.files.map((f) => f.id);
+
+    useOpenFiles.getState().deleteFolder(folderId);
+
+    const next = useOpenFiles.getState();
+    expect(next.folders).toHaveLength(0);
+    expect(next.files).toHaveLength(2);
+    next.files.forEach((f) => expect(f.folderId).toBeUndefined());
+    expect(next.rootOrder).toEqual(expect.arrayContaining(fileIds));
+    expect(next.rootOrder).not.toContain(folderId);
+  });
+
+  it("deleteFolder replaces folder id in rootOrder with childIds in order", () => {
+    useOpenFiles.getState().addFiles([{ name: "root.md", markdown: "" }]);
+    useOpenFiles.getState().addFilesInNewFolder(
+      [
+        { name: "a.md", markdown: "" },
+        { name: "b.md", markdown: "" },
+      ],
+      "folder1"
+    );
+    const state = useOpenFiles.getState();
+    const rootFileId = state.files.find((f) => f.name === "root.md")!.id;
+    const folderId = state.folders[0].id;
+    const [aId, bId] = state.folders[0].childIds;
+
+    useOpenFiles.getState().deleteFolder(folderId);
+
+    expect(useOpenFiles.getState().rootOrder).toEqual([rootFileId, aId, bId]);
+  });
+
+  it("moveFileToFolder moves a root file into the folder", () => {
+    useOpenFiles.getState().addFiles([{ name: "a.md", markdown: "" }]);
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "b.md", markdown: "" }], "folder1");
+    const fileId = useOpenFiles.getState().files.find((f) => f.name === "a.md")!.id;
+    const folderId = useOpenFiles.getState().folders[0].id;
+
+    useOpenFiles.getState().moveFileToFolder(fileId, folderId);
+
+    const next = useOpenFiles.getState();
+    const movedFile = next.files.find((f) => f.id === fileId)!;
+    expect(movedFile.folderId).toBe(folderId);
+    expect(next.folders[0].childIds).toContain(fileId);
+    expect(next.rootOrder).not.toContain(fileId);
+  });
+
+  it("moveFileToFolder from one folder to another folder", () => {
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "a.md", markdown: "" }], "folder1");
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "b.md", markdown: "" }], "folder2");
+    const fileId = useOpenFiles.getState().files.find((f) => f.name === "a.md")!.id;
+    const folder1Id = useOpenFiles.getState().folders[0].id;
+    const folder2Id = useOpenFiles.getState().folders[1].id;
+
+    useOpenFiles.getState().moveFileToFolder(fileId, folder2Id);
+
+    const next = useOpenFiles.getState();
+    expect(next.files.find((f) => f.id === fileId)?.folderId).toBe(folder2Id);
+    expect(next.folders.find((f) => f.id === folder1Id)?.childIds).not.toContain(fileId);
+    expect(next.folders.find((f) => f.id === folder2Id)?.childIds).toContain(fileId);
+  });
+
+  it("moveFileToRoot moves a file from a folder back to root", () => {
+    useOpenFiles.getState().addFilesInNewFolder(
+      [
+        { name: "a.md", markdown: "" },
+        { name: "b.md", markdown: "" },
+      ],
+      "folder1"
+    );
+    const fileId = useOpenFiles.getState().files.find((f) => f.name === "a.md")!.id;
+    const folderId = useOpenFiles.getState().folders[0].id;
+
+    useOpenFiles.getState().moveFileToRoot(fileId);
+
+    const next = useOpenFiles.getState();
+    expect(next.files.find((f) => f.id === fileId)?.folderId).toBeUndefined();
+    expect(next.folders.find((f) => f.id === folderId)?.childIds).not.toContain(fileId);
+    expect(next.rootOrder).toContain(fileId);
+  });
+
+  it("closeFile removes the file from its folder childIds", () => {
+    useOpenFiles.getState().addFilesInNewFolder(
+      [
+        { name: "a.md", markdown: "" },
+        { name: "b.md", markdown: "" },
+      ],
+      "folder1"
+    );
+    const fileId = useOpenFiles.getState().files.find((f) => f.name === "a.md")!.id;
+    const folderId = useOpenFiles.getState().folders[0].id;
+
+    useOpenFiles.getState().closeFile(fileId);
+
+    expect(
+      useOpenFiles.getState().folders.find((f) => f.id === folderId)?.childIds
+    ).not.toContain(fileId);
+  });
+
+  it("closing the last file resets folders and rootOrder", () => {
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "a.md", markdown: "" }], "folder1");
+    const fileId = useOpenFiles.getState().files[0].id;
+
+    useOpenFiles.getState().closeFile(fileId);
+
+    const state = useOpenFiles.getState();
+    expect(state.folders).toHaveLength(0);
+    expect(state.files).toHaveLength(1);
+    expect(state.files[0].name).toBe("untitled.md");
+    expect(state.rootOrder).toEqual([state.files[0].id]);
+  });
+
+  it("onRehydrateStorage migrates old flat data: sets empty folders and rootOrder from files", () => {
+    localStorage.setItem(
+      "markdown-editor-open-files",
+      JSON.stringify({
+        state: {
+          files: [
+            {
+              id: "old-id",
+              name: "legacy.md",
+              path: "legacy.md",
+              markdown: "# old",
+              isDirty: false,
+              reloadToken: 0,
+              initialHash: "abc",
+            },
+          ],
+          activeId: "old-id",
+        },
+        version: 0,
+      })
+    );
+
+    useOpenFiles.persist.rehydrate();
+
+    const state = useOpenFiles.getState();
+    expect(state.folders).toEqual([]);
+    expect(state.rootOrder).toContain("old-id");
+    expect(state.files[0].folderId).toBeUndefined();
   });
 });

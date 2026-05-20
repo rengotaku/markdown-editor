@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, beforeEach } from "vitest";
 import { Sidebar } from "./Sidebar";
@@ -8,7 +8,7 @@ import { useSidebarPrefs } from "@/hooks/useSidebarPrefs";
 describe("Sidebar", () => {
   beforeEach(() => {
     localStorage.clear();
-    useOpenFiles.setState({ files: [], activeId: null });
+    useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
     useSidebarPrefs.setState({ collapsed: false });
   });
 
@@ -89,5 +89,148 @@ describe("Sidebar", () => {
     expect(useSidebarPrefs.getState().collapsed).toBe(true);
     await user.click(screen.getByRole("button", { name: "expand sidebar" }));
     expect(useSidebarPrefs.getState().collapsed).toBe(false);
+  });
+});
+
+describe("Sidebar - folder support", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
+    useSidebarPrefs.setState({ collapsed: false });
+  });
+
+  it("shows folder name when a folder exists", () => {
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "a.md", markdown: "" }], "MyFolder");
+    render(<Sidebar />);
+    expect(screen.getByText("MyFolder")).toBeInTheDocument();
+  });
+
+  it("shows folder files when folder is expanded", () => {
+    useOpenFiles.getState().addFilesInNewFolder(
+      [
+        { name: "a.md", markdown: "" },
+        { name: "b.md", markdown: "" },
+      ],
+      "MyFolder"
+    );
+    render(<Sidebar />);
+    expect(screen.getByText("a.md")).toBeInTheDocument();
+    expect(screen.getByText("b.md")).toBeInTheDocument();
+  });
+
+  it("hides folder files when folder is collapsed", async () => {
+    const user = userEvent.setup();
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "a.md", markdown: "" }], "MyFolder");
+    render(<Sidebar />);
+    await user.click(screen.getByRole("button", { name: "MyFolder を閉じる" }));
+    expect(screen.queryByText("a.md")).not.toBeInTheDocument();
+  });
+
+  it("clicking folder toggle button calls toggleFolder", async () => {
+    const user = userEvent.setup();
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "a.md", markdown: "" }], "Folder1");
+    const folderId = useOpenFiles.getState().folders[0].id;
+    render(<Sidebar />);
+    await user.click(screen.getByRole("button", { name: "Folder1 を閉じる" }));
+    expect(useOpenFiles.getState().folders.find((f) => f.id === folderId)?.expanded).toBe(
+      false
+    );
+  });
+
+  it("renames folder via inline edit", async () => {
+    const user = userEvent.setup();
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "a.md", markdown: "" }], "OldName");
+    const folderId = useOpenFiles.getState().folders[0].id;
+    render(<Sidebar />);
+    await user.click(screen.getByRole("button", { name: "OldName をリネーム" }));
+    const input = screen.getByRole("textbox");
+    await user.clear(input);
+    await user.type(input, "NewName");
+    await user.keyboard("{Enter}");
+    expect(useOpenFiles.getState().folders.find((f) => f.id === folderId)?.name).toBe(
+      "NewName"
+    );
+  });
+
+  it("shows folder delete confirmation dialog when delete button clicked", async () => {
+    const user = userEvent.setup();
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "a.md", markdown: "" }], "DeleteMe");
+    render(<Sidebar />);
+    await user.click(screen.getByRole("button", { name: "DeleteMe を削除" }));
+    expect(screen.getByText(/フォルダを削除/)).toBeInTheDocument();
+  });
+
+  it("deletes folder and moves files to root when confirmed", async () => {
+    const user = userEvent.setup();
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "a.md", markdown: "" }], "DeleteMe");
+    const folderId = useOpenFiles.getState().folders[0].id;
+    render(<Sidebar />);
+    await user.click(screen.getByRole("button", { name: "DeleteMe を削除" }));
+    await user.click(screen.getByRole("button", { name: "削除" }));
+    expect(
+      useOpenFiles.getState().folders.find((f) => f.id === folderId)
+    ).toBeUndefined();
+    expect(useOpenFiles.getState().files[0].folderId).toBeUndefined();
+  });
+
+  it("dropping a file id on a folder row moves the file to that folder", () => {
+    useOpenFiles.getState().addFiles([{ name: "root.md", markdown: "" }]);
+    useOpenFiles
+      .getState()
+      .addFilesInNewFolder([{ name: "inner.md", markdown: "" }], "Folder1");
+    const rootFileId = useOpenFiles
+      .getState()
+      .files.find((f) => f.name === "root.md")!.id;
+    const folderId = useOpenFiles.getState().folders[0].id;
+
+    render(<Sidebar />);
+    const folderRow = screen
+      .getByText("Folder1")
+      .closest("[data-testid='folder-drop-zone']")!;
+
+    fireEvent.drop(folderRow, {
+      dataTransfer: { getData: () => rootFileId },
+    });
+
+    expect(useOpenFiles.getState().files.find((f) => f.id === rootFileId)?.folderId).toBe(
+      folderId
+    );
+    expect(
+      useOpenFiles.getState().folders.find((f) => f.id === folderId)?.childIds
+    ).toContain(rootFileId);
+  });
+
+  it("dropping a file id on the root area moves folder file back to root", () => {
+    useOpenFiles.getState().addFilesInNewFolder(
+      [
+        { name: "a.md", markdown: "" },
+        { name: "b.md", markdown: "" },
+      ],
+      "Folder1"
+    );
+    const fileId = useOpenFiles.getState().files.find((f) => f.name === "a.md")!.id;
+
+    render(<Sidebar />);
+    const rootDropArea = screen.getByTestId("sidebar-root-drop");
+
+    fireEvent.drop(rootDropArea, {
+      dataTransfer: { getData: () => fileId },
+    });
+
+    expect(
+      useOpenFiles.getState().files.find((f) => f.id === fileId)?.folderId
+    ).toBeUndefined();
   });
 });
