@@ -13,6 +13,100 @@ import { useEditorInstance } from "@/hooks/useEditorInstance";
 import { useSidebarPrefs } from "@/hooks/useSidebarPrefs";
 import { simpleHash } from "@/utils/hash";
 
+describe("Layout multi-file drop folder creation", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
+    useEditorInstance.setState({ editor: null, scrollToTopToken: 0 });
+    useSidebarPrefs.setState({ collapsed: true });
+  });
+
+  function dropFiles(
+    container: HTMLElement,
+    files: Array<{ name: string; path?: string; content?: string }>
+  ) {
+    const fileObjects = files.map(({ name, path, content = "" }) => {
+      const file = new File([content], name, { type: "text/markdown" });
+      if (path !== undefined) {
+        Object.defineProperty(file, "webkitRelativePath", { value: path });
+      }
+      return file;
+    });
+    const dataTransfer = {
+      files: fileObjects,
+      items: fileObjects.map((f) => ({ kind: "file", type: f.type, getAsFile: () => f })),
+      types: ["Files"],
+    };
+    fireEvent.dragEnter(container, { dataTransfer });
+    fireEvent.dragOver(container, { dataTransfer });
+    fireEvent.drop(container, { dataTransfer });
+  }
+
+  it("dropping 2 files simultaneously creates one folder containing both", async () => {
+    const { container } = render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+
+    await act(async () => {
+      dropFiles(container.firstElementChild as HTMLElement, [
+        { name: "a.md", path: "a.md", content: "# A" },
+        { name: "b.md", path: "b.md", content: "# B" },
+      ]);
+    });
+
+    await waitFor(() => {
+      const state = useOpenFiles.getState();
+      expect(state.folders).toHaveLength(1);
+      expect(state.files).toHaveLength(2);
+      state.files.forEach((f) => expect(f.folderId).toBe(state.folders[0].id));
+    });
+  });
+
+  it("dropping 1 file does not create a folder", async () => {
+    const { container } = render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+
+    await act(async () => {
+      dropFiles(container.firstElementChild as HTMLElement, [
+        { name: "single.md", path: "single.md", content: "# Single" },
+      ]);
+    });
+
+    await waitFor(() => {
+      const state = useOpenFiles.getState();
+      expect(state.folders).toHaveLength(0);
+      const singleFile = state.files.find((f) => f.name === "single.md");
+      expect(singleFile).toBeDefined();
+      expect(singleFile?.folderId).toBeUndefined();
+    });
+  });
+
+  it("folder name uses first filename without extension", async () => {
+    const { container } = render(
+      <Layout>
+        <div />
+      </Layout>
+    );
+
+    await act(async () => {
+      dropFiles(container.firstElementChild as HTMLElement, [
+        { name: "report.md", path: "report.md", content: "# R" },
+        { name: "notes.md", path: "notes.md", content: "# N" },
+      ]);
+    });
+
+    await waitFor(() => {
+      const state = useOpenFiles.getState();
+      expect(state.folders[0]?.name).toMatch(/^report/);
+    });
+  });
+});
+
 vi.mock("@/components/tiptap/TiptapEditor", () => ({
   TiptapEditor: () => <div data-testid="tiptap-editor" />,
 }));
@@ -20,7 +114,7 @@ vi.mock("@/components/tiptap/TiptapEditor", () => ({
 describe("Layout header buttons", () => {
   beforeEach(() => {
     localStorage.clear();
-    useOpenFiles.setState({ files: [], activeId: null });
+    useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
     useSidebarPrefs.setState({ collapsed: true });
   });
 
@@ -53,7 +147,7 @@ describe("Layout header buttons", () => {
 describe("Layout conflict dialog", () => {
   beforeEach(() => {
     localStorage.clear();
-    useOpenFiles.setState({ files: [], activeId: null });
+    useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
     useEditorInstance.setState({ editor: null, scrollToTopToken: 0 });
     useSidebarPrefs.setState({ collapsed: true });
   });
@@ -318,7 +412,7 @@ describe("Layout export filename", () => {
 
   beforeEach(() => {
     localStorage.clear();
-    useOpenFiles.setState({ files: [], activeId: null });
+    useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
     useSidebarPrefs.setState({ collapsed: true });
 
     anchorClick = vi.fn();

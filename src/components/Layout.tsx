@@ -35,6 +35,7 @@ export function Layout({ children }: LayoutProps) {
   const activeId = useOpenFiles((s) => s.activeId);
   const closeAll = useOpenFiles((s) => s.closeAll);
   const addFiles = useOpenFiles((s) => s.addFiles);
+  const addFilesInNewFolder = useOpenFiles((s) => s.addFilesInNewFolder);
   const overwriteFiles = useOpenFiles((s) => s.overwriteFiles);
   const requestScrollToTop = useEditorInstance((s) => s.requestScrollToTop);
   const centered = useEditorPrefs((s) => s.centered);
@@ -115,7 +116,10 @@ export function Layout({ children }: LayoutProps) {
         }
       }
 
-      if (fresh.length > 0) {
+      if (fresh.length >= 2) {
+        addFilesInNewFolder(fresh, buildFolderName(fresh));
+        requestScrollToTop();
+      } else if (fresh.length === 1) {
         addFiles(fresh);
         requestScrollToTop();
       }
@@ -129,7 +133,7 @@ export function Layout({ children }: LayoutProps) {
         });
       }
     },
-    [addFiles, requestScrollToTop]
+    [addFiles, addFilesInNewFolder, requestScrollToTop]
   );
 
   const handleDropError = useCallback(
@@ -391,4 +395,9 @@ function buildFilename(): string {
   const pad = (n: number) => n.toString().padStart(2, "0");
   const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
   return `markdown-${stamp}.md`;
+}
+
+function buildFolderName(files: IncomingFile[]): string {
+  const firstName = files[0].name.replace(/\.[^/.]+$/, "");
+  return `${firstName} 他${files.length - 1}件`;
 }
