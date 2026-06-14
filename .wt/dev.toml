@@ -1,0 +1,6 @@
+# markdown-editor の dev サーバー定義（wt serve / 起動ボタン用）
+# ${port} に worktree の割当ポートが入る。
+[[services]]
+name = "web"
+cmd = "npm run dev -- --port ${port}"
+domain = true
