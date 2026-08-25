@@ -4,12 +4,14 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Sidebar } from "./Sidebar";
 import { useOpenFiles } from "@/hooks/useOpenFiles";
 import { useSidebarPrefs } from "@/hooks/useSidebarPrefs";
+import { useRecentFiles } from "@/hooks/useRecentFiles";
 
 describe("Sidebar", () => {
   beforeEach(() => {
     localStorage.clear();
     useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
     useSidebarPrefs.setState({ collapsed: false });
+    useRecentFiles.setState({ recents: [] });
   });
 
   it("shows empty hint when no files are open", () => {
@@ -97,6 +99,7 @@ describe("Sidebar - folder support", () => {
     localStorage.clear();
     useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
     useSidebarPrefs.setState({ collapsed: false });
+    useRecentFiles.setState({ recents: [] });
   });
 
   it("shows folder name when a folder exists", () => {
@@ -232,5 +235,33 @@ describe("Sidebar - folder support", () => {
     expect(
       useOpenFiles.getState().files.find((f) => f.id === fileId)?.folderId
     ).toBeUndefined();
+  });
+
+  it("lists recent files and opens one on click", async () => {
+    const user = userEvent.setup();
+    useRecentFiles.setState({
+      recents: [{ name: "old.md", path: "old.md", markdown: "# Old", openedAt: 1 }],
+    });
+    render(<Sidebar />);
+    expect(screen.getByText("Recently")).toBeInTheDocument();
+
+    await user.click(screen.getByText("old.md"));
+
+    const state = useOpenFiles.getState();
+    expect(state.files.map((f) => f.name)).toEqual(["old.md"]);
+    expect(state.files[0].markdown).toBe("# Old");
+  });
+
+  it("removes a recent entry", async () => {
+    const user = userEvent.setup();
+    useRecentFiles.setState({
+      recents: [{ name: "old.md", path: "old.md", markdown: "# Old", openedAt: 1 }],
+    });
+    render(<Sidebar />);
+
+    await user.click(screen.getByLabelText("remove old.md from recent"));
+
+    expect(useRecentFiles.getState().recents).toEqual([]);
+    expect(screen.queryByText("Recently")).not.toBeInTheDocument();
   });
 });
