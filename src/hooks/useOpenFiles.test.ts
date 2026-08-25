@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useOpenFiles } from "./useOpenFiles";
+import { useRecentFiles } from "./useRecentFiles";
 
 describe("useOpenFiles", () => {
   beforeEach(() => {
     localStorage.clear();
     useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
+    useRecentFiles.setState({ recents: [] });
   });
 
   it("starts with no files and no active id when reset", () => {
@@ -195,6 +197,7 @@ describe("useOpenFiles - folder management", () => {
   beforeEach(() => {
     localStorage.clear();
     useOpenFiles.setState({ files: [], folders: [], rootOrder: [], activeId: null });
+    useRecentFiles.setState({ recents: [] });
   });
 
   it("addFilesInNewFolder creates a folder with the given name and places files inside", () => {
@@ -381,33 +384,42 @@ describe("useOpenFiles - folder management", () => {
     expect(state.rootOrder).toEqual([state.files[0].id]);
   });
 
-  it("onRehydrateStorage migrates old flat data: sets empty folders and rootOrder from files", () => {
-    localStorage.setItem(
-      "markdown-editor-open-files",
-      JSON.stringify({
-        state: {
-          files: [
-            {
-              id: "old-id",
-              name: "legacy.md",
-              path: "legacy.md",
-              markdown: "# old",
-              isDirty: false,
-              reloadToken: 0,
-              initialHash: "abc",
-            },
-          ],
-          activeId: "old-id",
-        },
-        version: 0,
-      })
-    );
+  it("does not persist open files across a reload", () => {
+    useOpenFiles.getState().addFiles([{ name: "a.md", markdown: "# A" }]);
+    expect(localStorage.getItem("markdown-editor-open-files")).toBeNull();
+  });
 
-    useOpenFiles.persist.rehydrate();
+  it("records opened files into the recent list", () => {
+    useOpenFiles.getState().addFiles([{ name: "a.md", markdown: "# A" }]);
+    const recents = useRecentFiles.getState().recents;
+    expect(recents.map((r) => r.name)).toEqual(["a.md"]);
+  });
 
+  it("reopens a recent file as a new tab", () => {
+    useOpenFiles.getState().openRecent({
+      name: "a.md",
+      path: "a.md",
+      markdown: "# A",
+      openedAt: 1,
+    });
     const state = useOpenFiles.getState();
-    expect(state.folders).toEqual([]);
-    expect(state.rootOrder).toContain("old-id");
-    expect(state.files[0].folderId).toBeUndefined();
+    expect(state.files).toHaveLength(1);
+    expect(state.files[0].markdown).toBe("# A");
+    expect(state.activeId).toBe(state.files[0].id);
+  });
+
+  it("activates the existing tab instead of duplicating when reopening a recent", () => {
+    useOpenFiles.getState().addFiles([{ name: "a.md", path: "a.md", markdown: "# A" }]);
+    const openedId = useOpenFiles.getState().files[0].id;
+    useOpenFiles.getState().createUntitled();
+    useOpenFiles.getState().openRecent({
+      name: "a.md",
+      path: "a.md",
+      markdown: "# A",
+      openedAt: 1,
+    });
+    const state = useOpenFiles.getState();
+    expect(state.files.filter((f) => f.path === "a.md")).toHaveLength(1);
+    expect(state.activeId).toBe(openedId);
   });
 });

@@ -21,7 +21,9 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import AddIcon from "@mui/icons-material/Add";
+import HistoryIcon from "@mui/icons-material/History";
 import { useOpenFiles, type OpenFile, type Folder } from "@/hooks/useOpenFiles";
+import { useRecentFiles, type RecentFile } from "@/hooks/useRecentFiles";
 import { useSidebarPrefs } from "@/hooks/useSidebarPrefs";
 
 const SIDEBAR_WIDTH = 240;
@@ -40,6 +42,9 @@ export function Sidebar() {
   const toggleFolder = useOpenFiles((s) => s.toggleFolder);
   const moveFileToFolder = useOpenFiles((s) => s.moveFileToFolder);
   const moveFileToRoot = useOpenFiles((s) => s.moveFileToRoot);
+  const openRecent = useOpenFiles((s) => s.openRecent);
+  const recents = useRecentFiles((s) => s.recents);
+  const removeRecent = useRecentFiles((s) => s.remove);
   const collapsed = useSidebarPrefs((s) => s.collapsed);
   const toggleCollapsed = useSidebarPrefs((s) => s.toggleCollapsed);
 
@@ -94,6 +99,10 @@ export function Sidebar() {
   });
 
   const isEmpty = files.length === 0;
+
+  // 開いているファイルは上のツリーに出ているので Recently からは除く
+  const openPaths = new Set(files.map((f) => f.path));
+  const visibleRecents = recents.filter((r) => !openPaths.has(r.path));
 
   return (
     <Box
@@ -207,6 +216,43 @@ export function Sidebar() {
                   />
                 )
               )}
+            </Box>
+          )}
+
+          {visibleRecents.length > 0 && (
+            <Box sx={{ borderTop: "1px solid #e0e0e0", mt: 1, pt: 0.5 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  px: 1,
+                  py: 0.5,
+                }}
+              >
+                <HistoryIcon sx={{ fontSize: 14, color: "#666" }} />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "#666",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  Recently
+                </Typography>
+              </Box>
+              <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0 }}>
+                {visibleRecents.map((recent) => (
+                  <RecentRow
+                    key={recent.path}
+                    recent={recent}
+                    onOpen={() => openRecent(recent)}
+                    onRemove={() => removeRecent(recent.path)}
+                  />
+                ))}
+              </Box>
             </Box>
           )}
         </Box>
@@ -525,6 +571,70 @@ function FileRow({ file, active, onActivate, onClose, indent = false }: FileRowP
           opacity: active ? 1 : 0,
           transition: "opacity 120ms ease",
         }}
+      >
+        <CloseIcon sx={{ fontSize: 14 }} />
+      </IconButton>
+    </Box>
+  );
+}
+
+interface RecentRowProps {
+  recent: RecentFile;
+  onOpen: () => void;
+  onRemove: () => void;
+}
+
+function RecentRow({ recent, onOpen, onRemove }: RecentRowProps) {
+  const handleRemoveClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onRemove();
+  };
+
+  return (
+    <Box
+      component="li"
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0.5,
+        pl: 1,
+        pr: 1,
+        py: 0.5,
+        cursor: "pointer",
+        "&:hover": { bgcolor: "rgba(0, 0, 0, 0.04)" },
+        "&:hover .recent-remove-btn": { opacity: 1 },
+      }}
+    >
+      <InsertDriveFileOutlinedIcon sx={{ fontSize: 16, color: "#999", flexShrink: 0 }} />
+      <Typography
+        variant="body2"
+        sx={{
+          flex: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          color: "#666",
+          fontSize: "0.8125rem",
+        }}
+        title={recent.path}
+      >
+        {recent.name}
+      </Typography>
+      <IconButton
+        className="recent-remove-btn"
+        size="small"
+        onClick={handleRemoveClick}
+        aria-label={`remove ${recent.name} from recent`}
+        sx={{ p: 0.25, opacity: 0, transition: "opacity 120ms ease" }}
       >
         <CloseIcon sx={{ fontSize: 14 }} />
       </IconButton>
